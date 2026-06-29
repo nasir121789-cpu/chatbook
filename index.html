@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ChatBook - গ্লোবাল সোশ্যাল প্ল্যাটফর্ম</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; -webkit-tap-highlight-color:transparent; }
+        :root {
+            --fb-blue:#0084FF; --fb-bg:#FFFFFF; --fb-card-bg:#F0F2F5; --input-bg:#F5F6F7;
+            --text-main:#050505; --text-sub:#65676B; --border-color:#CCD0D5;
+        }
+        [data-theme="dark"] {
+            --fb-blue:#0084FF; --fb-bg:#18191A; --fb-card-bg:#242526; --input-bg:#242526;
+            --text-main:#E4E6EB; --text-sub:#B0B3B8; --border-color:#3E4042;
+        }
+        body { background-color:#E4E6EB; color:var(--text-main); display:flex; flex-direction:column; height:100vh; overflow:hidden; transition:background 0.3s; }
+        [data-theme="dark"] body { background:#111213; }
+
+        /* =================== AUTH OVERLAY =================== */
+        #authOverlay {
+            position:fixed; inset:0; z-index:9999;
+            background:#18191A;
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            overflow-y:auto;
+        }
+        .auth-screen { display:none; width:100%; max-width:420px; padding:24px 20px; min-height:100vh; flex-direction:column; align-items:center; justify-content:center; }
+        .auth-screen.active { display:flex; }
+
+        #loginScreen { justify-content:flex-end; padding-bottom:30px; gap:0; }
+        .auth-fb-logo { font-size:56px; color:#0084FF; font-weight:900; letter-spacing:-2px; margin-bottom:48px; align-self:center; }
+        .auth-terms-txt { color:#B0B3B8; font-size:12px; text-align:center; margin-bottom:18px; line-height:1.6; padding:0 10px; }
+        .auth-terms-txt b { color:#E4E6EB; }
+        .auth-input { width:100%; background:#242526; border:1.5px solid #3E4042; color:#E4E6EB; padding:13px 16px; border-radius:8px; font-size:15px; outline:none; margin-bottom:12px; transition:border 0.2s; }
+        .auth-input:focus { border-color:#0084FF; }
+        .auth-input::placeholder { color:#65676B; }
+        .auth-btn-primary { width:100%; background:#0084FF; color:#fff; border:none; padding:14px; border-radius:8px; font-size:16px; font-weight:700; cursor:pointer; margin-bottom:14px; }
+        .auth-forgot { color:#0084FF; font-size:14px; text-align:center; cursor:pointer; margin-bottom:28px; }
+        .auth-divider { width:100%; height:1px; background:#3E4042; margin:6px 0 20px; }
+        .auth-btn-create { width:100%; background:transparent; color:#E4E6EB; border:1.5px solid #3E4042; padding:13px; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; text-align:center; }
+        .meta-logo { color:#B0B3B8; font-size:12px; text-align:center; margin-top:18px; letter-spacing:1px; }
+
+        .step-header { width:100%; margin-bottom:28px; }
+        .step-title { font-size:28px; font-weight:800; color:#E4E6EB; margin-bottom:8px; }
+        .step-sub { font-size:14px; color:#B0B3B8; line-height:1.5; }
+        .step-input-row { display:flex; gap:10px; width:100%; margin-bottom:14px; }
+        .step-input-row .auth-input { margin-bottom:0; }
+        .step-next-btn { width:100%; background:#0084FF; color:#fff; border:none; padding:14px; border-radius:50px; font-size:16px; font-weight:700; cursor:pointer; margin-top:8px; }
+        .step-back-link { color:#B0B3B8; font-size:14px; cursor:pointer; margin-top:14px; text-align:center; }
+
+        .dob-row { display:flex; gap:8px; width:100%; margin-bottom:14px; }
+        .dob-select { flex:1; background:#242526; border:1.5px solid #3E4042; color:#E4E6EB; padding:13px 10px; border-radius:8px; font-size:14px; outline:none; appearance:none; cursor:pointer; }
+
+        .photo-cover-area { width:100%; height:140px; background:#242526; border-radius:10px; position:relative; border:2px dashed #3E4042; cursor:pointer; overflow:hidden; margin-bottom:20px; display:flex; align-items:center; justify-content:center; }
+        .photo-cover-area.has-photo { border-style:solid; }
+        .photo-cover-bg { width:100%; height:100%; background-size:cover; background-position:center; }
+        .photo-pfp-ring { position:absolute; bottom:-30px; left:50%; transform:translateX(-50%); width:80px; height:80px; border-radius:50%; border:4px solid #18191A; background:#242526; overflow:hidden; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+        .photo-pfp-inner { width:100%; height:100%; background-size:cover; background-position:center; border-radius:50%; }
+        .photo-placeholder-txt { color:#B0B3B8; font-size:13px; text-align:center; pointer-events:none; padding:8px; }
+        .photo-pfp-placeholder { color:#B0B3B8; font-size:20px; }
+        .photo-step-labels { margin-top:44px; width:100%; display:flex; flex-direction:column; gap:10px; }
+
+        .terms-box { background:#242526; border-radius:10px; padding:16px; width:100%; margin-bottom:18px; }
+        .terms-box p { font-size:13px; color:#B0B3B8; line-height:1.7; }
+        .perm-item { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #3E4042; }
+        .perm-item:last-child { border-bottom:none; }
+        .perm-icon { font-size:22px; flex-shrink:0; }
+        .perm-text { font-size:13px; color:#B0B3B8; line-height:1.5; }
+        .perm-text b { color:#E4E6EB; }
+
+        .step-dots { display:flex; gap:6px; margin-bottom:28px; }
+        .step-dot { width:8px; height:8px; border-radius:50%; background:#3E4042; transition:background 0.3s; }
+        .step-dot.active { background:#0084FF; }
+
+        /* =================== MESSENGER =================== */
+        #messengerModal { display:none; position:fixed; inset:0; z-index:5000; background:#000000; flex-direction:column; }
+        #messengerModal.open { display:flex; }
+        .msng-header { background:#1C1C1E; height:60px; display:flex; align-items:center; padding:0 12px; gap:10px; border-bottom:1px solid #2C2C2E; flex-shrink:0; }
+        .msng-back { color:#0084FF; font-size:22px; cursor:pointer; padding:4px 8px; }
+        .msng-header-avatar { width:38px; height:38px; border-radius:50%; background-size:cover; background-position:center; flex-shrink:0; }
+        .msng-header-info { flex:1; }
+        .msng-header-name { color:#E4E6EB; font-size:16px; font-weight:700; }
+        .msng-header-status { display:flex; align-items:center; gap:5px; }
+        .msng-online-dot { width:8px; height:8px; border-radius:50%; background:#31A24C; }
+        .msng-header-status span { color:#B0B3B8; font-size:12px; }
+        .msng-call-btns { display:flex; gap:6px; }
+        .msng-call-btn { width:36px; height:36px; border-radius:50%; background:#1C1C1E; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+        .msng-call-btn svg { width:18px; height:18px; fill:#0084FF; }
+
+        .msng-profile-intro { display:flex; flex-direction:column; align-items:center; padding:28px 16px 20px; background:#000; flex-shrink:0; }
+        .msng-intro-avatar { width:80px; height:80px; border-radius:50%; background-size:cover; background-position:center; position:relative; }
+        .msng-intro-online-dot { position:absolute; bottom:4px; right:4px; width:14px; height:14px; background:#31A24C; border-radius:50%; border:2px solid #000; }
+        .msng-intro-name { color:#E4E6EB; font-size:18px; font-weight:700; margin-top:10px; }
+        .msng-intro-sub { color:#B0B3B8; font-size:13px; margin-top:4px; }
+
+        .msng-messages-list { flex:1; overflow-y:auto; padding:12px 10px; background:#000; display:flex; flex-direction:column; gap:6px; }
+        .msng-messages-list::-webkit-scrollbar { display:none; }
+
+        .msg-row { display:flex; align-items:flex-end; gap:6px; }
+        .msg-row.me { flex-direction:row-reverse; }
+        .msg-avatar-sm { width:28px; height:28px; border-radius:50%; background-size:cover; background-position:center; flex-shrink:0; }
+        .msg-bubble { max-width:72%; padding:10px 14px; border-radius:20px; font-size:14.5px; line-height:1.45; word-break:break-word; }
+        .msg-bubble.them { background:#1C1C1E; color:#E4E6EB; border-bottom-left-radius:4px; }
+        .msg-bubble.me { background:#0084FF; color:#fff; border-bottom-right-radius:4px; }
+        .msg-media-bubble { max-width:72%; border-radius:16px; overflow:hidden; }
+        .msg-media-bubble img { width:100%; max-width:220px; display:block; border-radius:16px; }
+        .msg-media-bubble video { width:100%; max-width:220px; display:block; border-radius:16px; }
+        .msg-voice-bubble { max-width:72%; background:#1C1C1E; border-radius:20px; padding:10px 14px; display:flex; align-items:center; gap:10px; min-width:160px; }
+        .msg-voice-bubble.me { background:#0084FF; }
+        .voice-play-btn { width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,0.15); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#fff; font-size:14px; }
+        .voice-waveform { flex:1; display:flex; align-items:center; gap:2px; height:28px; }
+        .voice-bar { width:3px; border-radius:2px; background:rgba(255,255,255,0.4); }
+        .voice-duration { color:rgba(255,255,255,0.7); font-size:11px; white-space:nowrap; }
+
+        .msng-input-bar { background:#1C1C1E; padding:8px 10px; display:flex; align-items:center; gap:8px; border-top:1px solid #2C2C2E; flex-shrink:0; padding-bottom:max(8px, env(safe-area-inset-bottom)); }
+        .msng-action-btn { background:none; border:none; cursor:pointer; padding:6px; border-radius:50%; flex-shrink:0; }
+        .msng-action-btn svg { width:24px; height:24px; fill:#0084FF; }
+        .msng-text-input { flex:1; background:#2C2C2E; border:none; color:#E4E6EB; padding:10px 16px; border-radius:22px; font-size:15px; outline:none; resize:none; max-height:120px; overflow-y:auto; line-height:1.4; }
+        .msng-text-input::placeholder { color:#65676B; }
+        .msng-send-btn { background:#0084FF; border:none; width:38px; height:38px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .msng-send-btn svg { width:18px; height:18px; fill:#fff; }
+        .msng-thumb-btn { background:none; border:none; cursor:pointer; font-size:26px; flex-shrink:0; }
+        .msng-mic-btn { background:none; border:none; cursor:pointer; padding:6px; border-radius:50%; flex-shrink:0; }
+        .msng-mic-btn svg { width:24px; height:24px; fill:#0084FF; }
+        .msng-mic-btn.recording { background:rgba(255,0,0,0.15); }
+        .msng-mic-btn.recording svg { fill:#FF3B30; animation:pulse-rec 1s infinite; }
+        @keyframes pulse-rec { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        #lunexAIModal { display:none; position:fixed; inset:0; z-index:5100; background:#000; flex-direction:column; }
+        #lunexAIModal.open { display:flex; }
+        .lunex-header { background:linear-gradient(135deg,#0D0D1A,#0D0020); height:62px; display:flex; align-items:center; padding:0 12px; gap:10px; border-bottom:1px solid rgba(138,43,226,0.3); flex-shrink:0; }
+        .lunex-back { color:#8A2BE2; font-size:22px; cursor:pointer; padding:4px 8px; }
+        .lunex-avatar-hd { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#8A2BE2,#0084FF); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; box-shadow:0 0 12px rgba(138,43,226,0.5); }
+        .lunex-header-info { flex:1; }
+        .lunex-header-name { font-size:16px; font-weight:800; background:linear-gradient(90deg,#C084FC,#60A5FA); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        .lunex-header-status { font-size:11px; color:#7C3AED; display:flex; align-items:center; gap:4px; }
+        .lunex-status-dot { width:7px; height:7px; border-radius:50%; background:#7C3AED; animation:lunex-pulse 1.5s infinite; }
+        @keyframes lunex-pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.5;transform:scale(0.8);} }
+
+        .lunex-intro { display:flex; flex-direction:column; align-items:center; padding:30px 16px 20px; background:linear-gradient(180deg,#0D0020,#000); flex-shrink:0; }
+        .lunex-intro-avatar { width:88px; height:88px; border-radius:50%; background:linear-gradient(135deg,#8A2BE2,#0084FF); display:flex; align-items:center; justify-content:center; font-size:44px; box-shadow:0 0 30px rgba(138,43,226,0.6); }
+        .lunex-intro-name { font-size:20px; font-weight:800; margin-top:12px; background:linear-gradient(90deg,#C084FC,#60A5FA); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        .lunex-intro-sub { color:#7C3AED; font-size:13px; margin-top:4px; }
+        .lunex-chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-top:14px; }
+        .lunex-chip { background:rgba(138,43,226,0.15); border:1px solid rgba(138,43,226,0.3); color:#C084FC; padding:6px 12px; border-radius:20px; font-size:12px; cursor:pointer; }
+        .lunex-chip:active { background:rgba(138,43,226,0.3); }
+
+        .lunex-messages { flex:1; overflow-y:auto; padding:12px 10px; background:#000; display:flex; flex-direction:column; gap:8px; }
+        .lunex-messages::-webkit-scrollbar { display:none; }
+        .lunex-msg-row { display:flex; align-items:flex-end; gap:6px; }
+        .lunex-msg-row.me { flex-direction:row-reverse; }
+        .lunex-ai-av { width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,#8A2BE2,#0084FF); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+        .lunex-bubble { max-width:75%; padding:10px 14px; border-radius:20px; font-size:14.5px; line-height:1.5; word-break:break-word; }
+        .lunex-bubble.ai { background:linear-gradient(135deg,#1A0A2E,#0A1628); color:#E4E6EB; border-bottom-left-radius:4px; border:1px solid rgba(138,43,226,0.2); }
+        .lunex-bubble.me { background:linear-gradient(135deg,#8A2BE2,#6D28D9); color:#fff; border-bottom-right-radius:4px; }
+        .lunex-typing { display:flex; align-items:center; gap:4px; padding:10px 14px; background:linear-gradient(135deg,#1A0A2E,#0A1628); border-radius:20px; border-bottom-left-radius:4px; width:fit-content; border:1px solid rgba(138,43,226,0.2); }
+        .lunex-typing span { width:7px; height:7px; border-radius:50%; background:#8A2BE2; animation:typing-dot 1.2s infinite; }
+        .lunex-typing span:nth-child(2){animation-delay:.2s;} .lunex-typing span:nth-child(3){animation-delay:.4s;}
+        @keyframes typing-dot{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-6px);}}
+
+        .lunex-input-bar { background:#0D0020; padding:8px 10px; display:flex; align-items:center; gap:8px; border-top:1px solid rgba(138,43,226,0.25); flex-shrink:0; padding-bottom:max(8px,env(safe-area-inset-bottom)); }
+        .lunex-text-input { flex:1; background:#1A0A2E; border:1px solid rgba(138,43,226,0.3); color:#E4E6EB; padding:10px 16px; border-radius:22px; font-size:15px; outline:none; resize:none; max-height:100px; overflow-y:auto; line-height:1.4; }
+        .lunex-text-input::placeholder { color:#7C3AED; }
+        .lunex-send-btn { background:linear-gradient(135deg,#8A2BE2,#0084FF); border:none; width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 0 10px rgba(138,43,226,0.4); }
+        .lunex-send-btn svg { width:18px; height:18px; fill:#fff; }
+
+        .msng-upload-bar { display:none; background:#2C2C2E; border-radius:8px; padding:8px 12px; margin:4px 10px; }
+        .msng-upload-bar-inner { height:4px; background:#3E4042; border-radius:2px; overflow:hidden; }
+        .msng-upload-bar-fill { height:100%; width:0%; background:#0084FF; transition:width 0.2s; }
+        .msng-upload-status { font-size:11px; color:#B0B3B8; margin-top:4px; }
+
+        #messengerInboxModal { display:none; position:fixed; inset:0; z-index:4900; background:#18191A; flex-direction:column; }
+        #messengerInboxModal.open { display:flex; }
+        .inbox-header { background:#18191A; padding:16px 14px 10px; border-bottom:1px solid #3E4042; flex-shrink:0; }
+        .inbox-header h2 { color:#E4E6EB; font-size:22px; font-weight:800; margin-bottom:10px; }
+        .inbox-search { width:100%; background:#3A3B3C; border:none; color:#E4E6EB; padding:10px 14px; border-radius:22px; font-size:14px; outline:none; }
+        .inbox-search::placeholder { color:#65676B; }
+        .inbox-list { flex:1; overflow-y:auto; }
+        .inbox-list::-webkit-scrollbar { display:none; }
+        .inbox-item { display:flex; align-items:center; gap:12px; padding:10px 14px; cursor:pointer; }
+        .inbox-item:active { background:#242526; }
+        .inbox-avatar { width:56px; height:56px; border-radius:50%; background-size:cover; background-position:center; flex-shrink:0; position:relative; }
+        .inbox-online-dot { position:absolute; bottom:2px; right:2px; width:12px; height:12px; background:#31A24C; border-radius:50%; border:2px solid #18191A; }
+        .inbox-info { flex:1; overflow:hidden; }
+        .inbox-name { color:#E4E6EB; font-size:15px; font-weight:600; }
+        .inbox-preview { color:#B0B3B8; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+
+        .header { background-color:var(--fb-bg); height:55px; display:flex; align-items:center; padding:0 12px; gap:8px; position:sticky; top:0; z-index:100; border-bottom:1px solid var(--border-color); }
+        .header .logo { color:var(--fb-blue); font-size:24px; font-weight:800; letter-spacing:-0.5px; cursor:pointer; }
+        .search-box-container { flex:1; display:flex; gap:5px; }
+        .search-box-container input { width:100%; background:var(--fb-card-bg); border:none; padding:8px 12px; border-radius:20px; font-size:13px; outline:none; color:var(--text-main); }
+        .search-btn-go { background:var(--fb-blue); color:white; border:none; padding:0 14px; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; }
+        .notif-bell { position:relative; cursor:pointer; padding:4px; }
+        .notif-bell svg { width:24px; height:24px; fill:var(--text-sub); }
+        .notif-dot { position:absolute; top:2px; right:2px; width:10px; height:10px; background:red; border-radius:50%; border:2px solid white; display:none; }
+
+        .view-container { flex:1; overflow-y:auto; padding-bottom:60px; }
+        .view-page { display:none; width:100%; max-width:550px; margin:0 auto; }
+        .view-page.active { display:block; }
+        .section-card { background-color:var(--fb-bg); margin-bottom:8px; padding:12px; box-shadow:0 1px 2px rgba(0,0,0,0.1); }
+
+        .story-tray-container { display:flex; gap:8px; overflow-x:auto; padding:12px; background:var(--fb-bg); margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,0.1); }
+        .story-tray-container::-webkit-scrollbar { display:none; }
+        .story-card-item { min-width:85px; width:85px; height:140px; border-radius:10px; background-size:cover; background-position:center; position:relative; overflow:hidden; cursor:pointer; border:1px solid rgba(0,0,0,0.05); }
+        .story-create-btn-inside { position:absolute; bottom:0; width:100%; height:40px; background:var(--fb-bg); text-align:center; font-size:10px; font-weight:bold; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-main); }
+        .story-plus-icon { width:20px; height:20px; background:var(--fb-blue); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:bold; position:absolute; top:-10px; border:2px solid white; }
+        .story-user-avatar { position:absolute; top:8px; left:8px; width:28px; height:28px; border-radius:50%; border:2px solid var(--fb-blue); background-size:cover; background-position:center; }
+        .story-username-txt { position:absolute; bottom:6px; left:6px; right:6px; color:white; font-size:10px; font-weight:bold; text-shadow:0 1px 4px rgba(0,0,0,0.8); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+        .create-post-container { display:flex; align-items:center; gap:10px; padding-bottom:10px; border-bottom:1px solid var(--border-color); }
+        .user-avatar-top { width:40px; height:40px; border-radius:50%; background-size:cover; background-position:center; cursor:pointer; }
+        .trigger-post-input { flex:1; background-color:var(--fb-card-bg); padding:10px 16px; border-radius:20px; font-size:14px; color:var(--text-sub); cursor:pointer; border:1px solid #E4E6EB; }
+        .post-creator-box { display:none; background:var(--fb-bg); padding:14px; margin-top:10px; border-radius:8px; border:1px solid var(--fb-blue); }
+        .post-creator-box textarea { width:100%; padding:10px 12px; margin-bottom:8px; border:1px solid var(--border-color); border-radius:6px; font-size:14px; outline:none; resize:none; background:var(--input-bg); color:var(--text-main); }
+
+        .file-select-area { display:flex; align-items:center; gap:8px; background:var(--fb-card-bg); padding:10px; border-radius:6px; margin-bottom:8px; cursor:pointer; border:1px dashed var(--border-color); }
+        .file-select-area:hover { background:var(--border-color); }
+        .file-icon { font-size:18px; }
+        .file-status-text { font-size:13px; color:var(--text-sub); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .upload-progress-bar { display:none; height:4px; background:#e4e6eb; border-radius:2px; margin-bottom:8px; overflow:hidden; }
+        .upload-progress-fill { height:100%; width:0%; background:var(--fb-blue); transition:width 0.2s; }
+        .post-submit-btn { background-color:var(--fb-blue); color:white; border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer; width:100%; }
+        .post-submit-btn:disabled { background-color:#ced0d4; cursor:not-allowed; }
+
+        .fb-post { background:var(--fb-bg); margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,0.1); position:relative; }
+        .post-top-bar { display:flex; justify-content:space-between; padding:12px; align-items:center; }
+        .post-profile-area { display:flex; align-items:center; gap:8px; cursor:pointer; }
+        .post-p-p { width:36px; height:36px; border-radius:50%; background-size:cover; background-position:center; }
+        .post-meta h4 { font-size:14px; font-weight:bold; color:var(--text-main); }
+        .post-meta span { font-size:11px; color:var(--text-sub); }
+        .post-report-btn { background:none; border:none; font-size:16px; cursor:pointer; padding:4px 8px; color:var(--text-sub); }
+        .post-text-content { padding:0 12px 8px 12px; font-size:14.5px; line-height:1.4; color:var(--text-main); }
+        .post-media-display { width:100%; background:#000; display:flex; justify-content:center; }
+        .post-media-display img,.post-media-display video { width:100%; height:auto; max-height:450px; object-fit:cover; }
+        .post-status-counts { display:flex; justify-content:space-between; padding:8px 12px; font-size:12px; color:var(--text-sub); align-items:center; }
+
+        .watch-video-card { background:#18191A; margin-bottom:16px; border-radius:12px; overflow:hidden; color:white; border:1px solid #2f3031; position:relative; }
+        .watch-video-wrapper { position:relative; background:#000; display:flex; justify-content:center; align-items:center; }
+        .watch-video-card video { width:100%; height:auto; max-height:480px; display:block; }
+
+        .profile-container { background:var(--fb-bg); width:100%; padding-bottom:12px; }
+        .cover-photo-frame { width:100%; height:180px; background-size:cover; background-position:center; position:relative; background-color:#ced0d4; }
+        .profile-avatar-frame { position:absolute; bottom:-35px; left:16px; width:100px; height:100px; border-radius:50%; border:4px solid var(--fb-bg); background-color:var(--fb-bg); }
+        .profile-avatar-inner { width:100%; height:100%; background-size:cover; background-position:center; border-radius:50%; }
+        .profile-text-details { padding:45px 16px 12px 16px; text-align:left; }
+        .profile-stats-row { display:flex; gap:15px; margin:8px 0; font-size:13px; color:var(--text-sub); font-weight:bold; }
+        .edit-profile-btn { background:#E4E6EB; border:none; padding:8px; width:100%; border-radius:6px; font-weight:bold; margin-top:8px; cursor:pointer; }
+        .admin-panel-btn { background:linear-gradient(135deg,#1a1a2e,#16213e); color:#00d4ff; border:1px solid #00d4ff; padding:10px; width:100%; border-radius:6px; font-weight:bold; margin-top:8px; cursor:pointer; font-size:13px; }
+
+        .fb-suggestion-item { display:flex; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid #E4E6EB; }
+        .fb-suggestion-avatar { width:68px; height:68px; border-radius:50%; background-size:cover; background-position:center; }
+        .fb-suggestion-right { flex:1; display:flex; flex-direction:column; gap:6px; }
+        .fb-suggestion-btn-row { display:flex; gap:8px; }
+        .fb-btn-primary { background-color:var(--fb-blue); color:white; border:none; padding:7px 20px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer; flex:1; text-align:center; }
+        .fb-btn-secondary { background-color:#E4E6EB; color:black; border:none; padding:7px 20px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer; flex:1; text-align:center; }
+        .search-user-card { display:flex; align-items:center; justify-content:space-between; background:var(--fb-bg); padding:12px; margin-bottom:6px; border-radius:8px; cursor:pointer; }
+
+        .profile-modal-view { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#E4E6EB; z-index:1000; overflow-y:auto; padding-bottom:60px; }
+        .modal-close-header { background:var(--fb-bg); height:50px; display:flex; align-items:center; padding:0 12px; border-bottom:1px solid var(--border-color); position:sticky; top:0; z-index:1010; }
+        .back-btn-ui { font-size:20px; cursor:pointer; font-weight:bold; margin-right:15px; color:var(--text-main); }
+
+        .comment-section-wrapper { background:var(--fb-card-bg); padding:8px 12px; border-top:1px solid #E4E6EB; }
+        .comment-display-list { max-height:150px; overflow-y:auto; margin-bottom:8px; }
+        .single-comment-card { display:flex; gap:8px; margin-bottom:6px; }
+        .comment-avatar { width:28px; height:28px; border-radius:50%; background-size:cover; }
+        .comment-bubble { background:#E4E6EB; padding:6px 12px; border-radius:16px; font-size:12.5px; color:var(--text-main); }
+        .comment-input-row { display:flex; gap:6px; }
+        .comment-input-field { flex:1; padding:8px 12px; border-radius:20px; border:1px solid var(--border-color); outline:none; font-size:13px; background:var(--fb-bg); color:var(--text-main); }
+        .comment-send-btn { background:none; border:none; color:var(--fb-blue); font-weight:bold; cursor:pointer; }
+        .post-action-row { display:flex; border-top:1px solid #E4E6EB; border-bottom:1px solid #E4E6EB; position:relative; }
+        .action-tab-btn { flex:1; text-align:center; padding:10px 0; font-size:13px; font-weight:600; color:var(--text-sub); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; }
+        .reaction-flyout-box { display:none; position:absolute; bottom:42px; left:10px; background:white; border-radius:30px; padding:6px 10px; box-shadow:0 4px 15px rgba(0,0,0,0.2); z-index:200; gap:10px; }
+        .reaction-emoji-item { font-size:24px; cursor:pointer; transition:transform 0.15s ease; }
+        .reaction-emoji-item:hover { transform:scale(1.35); }
+
+        .bottom-nav-bar { background-color:var(--fb-bg); height:50px; display:flex; justify-content:space-around; align-items:center; border-top:1px solid var(--border-color); position:fixed; bottom:0; width:100%; z-index:100; }
+        .bottom-tab { display:flex; justify-content:center; align-items:center; cursor:pointer; flex:1; height:100%; }
+        .bottom-tab svg { width:24px; height:24px; fill:#65676B; }
+        .bottom-tab.active svg { fill:var(--fb-blue); }
+
+        .friend-btn-style { background:var(--fb-blue); color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:bold; cursor:pointer; width:100%; margin-top:8px; }
+        .friend-btn-style.is-friend { background:#42B72A; }
+
+        .story-lightbox-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:2000; flex-direction:column; justify-content:center; align-items:center; }
+        .lightbox-close-btn { position:absolute; top:15px; right:15px; color:white; font-size:30px; font-weight:bold; cursor:pointer; z-index:2100; }
+        .lightbox-img-frame { max-width:95%; max-height:80vh; object-fit:contain; border-radius:8px; }
+        .lightbox-user-bar { position:absolute; top:15px; left:15px; display:flex; align-items:center; gap:10px; color:white; }
+
+        .notif-panel { display:none; position:fixed; top:56px; right:8px; width:calc(100% - 16px); max-width:380px; background:var(--fb-bg); border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.15); z-index:500; max-height:70vh; overflow-y:auto; border:1px solid var(--border-color); }
+        .notif-panel-header { padding:14px 16px; border-bottom:1px solid var(--border-color); font-size:16px; font-weight:bold; display:flex; justify-content:space-between; align-items:center; color:var(--text-main); }
+        .notif-item { padding:12px 16px; border-bottom:1px solid #f0f2f5; display:flex; gap:10px; align-items:flex-start; }
+        .notif-item-icon { font-size:20px; flex-shrink:0; }
+        .notif-item-text { flex:1; }
+        .notif-item-title { font-size:14px; font-weight:bold; color:var(--text-main); }
+        .notif-item-body { font-size:12px; color:var(--text-sub); margin-top:2px; }
+        .notif-item-time { font-size:10px; color:#aaa; margin-top:2px; }
+        .notif-empty { padding:30px; text-align:center; color:var(--text-sub); font-size:13px; }
+
+        .report-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:3000; align-items:flex-end; justify-content:center; }
+        .report-modal.open { display:flex; }
+        .report-sheet { background:var(--fb-bg); border-radius:20px 20px 0 0; padding:20px 18px 34px; width:100%; max-width:500px; }
+        .report-sheet h3 { font-size:16px; font-weight:bold; margin-bottom:14px; color:var(--text-main); }
+        .report-reason-btn { display:block; width:100%; text-align:left; padding:12px; border:1px solid var(--border-color); border-radius:8px; margin-bottom:8px; font-size:14px; cursor:pointer; background:var(--fb-bg); color:var(--text-main); }
+        .report-cancel-btn { display:block; width:100%; padding:12px; border:none; border-radius:8px; font-size:14px; font-weight:bold; cursor:pointer; background:#f0f2f5; color:var(--text-sub); margin-top:4px; }
+
+        .theme-toggle-btn { background:var(--fb-card-bg); border:none; padding:6px 10px; border-radius:20px; font-size:16px; cursor:pointer; }
+        .ad-banner-wrapper { width:100%; background:var(--fb-card-bg); text-align:center; padding:6px 0 4px; border-top:1px solid var(--border-color); overflow:hidden; }
+        .ad-banner-label { font-size:9px; color:#bbb; letter-spacing:0.5px; margin-bottom:3px; }
+
+        #storyCreateModal { display:none; position:fixed; inset:0; z-index:6000; background:rgba(0,0,0,0.8); align-items:flex-end; justify-content:center; }
+        #storyCreateModal.open { display:flex; }
+        .story-create-sheet { background:var(--fb-bg); border-radius:20px 20px 0 0; padding:20px 18px 34px; width:100%; max-width:500px; }
+        .story-create-sheet h3 { font-size:16px; font-weight:bold; margin-bottom:14px; color:var(--text-main); }
+        .story-submit-btn { background:var(--fb-blue); color:white; border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer; width:100%; margin-top:6px; }
+        .story-submit-btn:disabled { background:#ced0d4; cursor:not-allowed; }
+        .story-cancel-btn { display:block; width:100%; padding:12px; border:none; border-radius:8px; font-size:14px; font-weight:bold; cursor:pointer; background:#f0f2f5; color:var(--text-sub); margin-top:8px; }
+    </style>
+</head>
+<body onclick="closeAllOverlayPopups()">
+
+<!-- AUTH OVERLAY -->
+<div id="authOverlay">
+    <div id="loginScreen" class="auth-screen active">
+        <div style="margin-bottom:48px; align-self:center;">
+            <svg width="90" height="90" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100" height="100" rx="22" fill="#0084FF"/>
+                <path d="M72,35 C68,28 61,24 53,24 C39,24 28,35 28,50 C28,65 39,76 53,76 C61,76 68,72 72,65" stroke="white" stroke-width="11" stroke-linecap="round" fill="none"/>
+            </svg>
+        </div>
+        <div class="auth-terms-txt">By proceeding, you agree to <b>ChatBook's Terms</b>.<br><a href="#" style="color:#0084FF;">Change Settings</a></div>
+        <div style="width:100%;max-width:420px;padding:0 20px;">
+            <input class="auth-input" type="text" id="loginEmail" placeholder="Mobile number or email" autocomplete="username">
+            <input class="auth-input" type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+            <button class="auth-btn-primary" onclick="doLogin()">Log in</button>
+            <div class="auth-forgot" onclick="doForgotPassword()">Forgot password?</div>
+            <div class="auth-divider"></div>
+            <button class="auth-btn-create" onclick="goToStep(1)">Create new account</button>
+            <div class="meta-logo">∞ Lunex</div>
+        </div>
+    </div>
+
+    <div id="step1Screen" class="auth-screen">
+        <div style="width:100%;max-width:420px;">
+            <div class="step-dots"><div class="step-dot active"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div></div>
+            <div class="step-header"><div class="step-title">What's your name?</div><div class="step-sub">Enter the name you use in real life.</div></div>
+            <div class="step-input-row">
+                <input class="auth-input" type="text" id="regFirstName" placeholder="First name">
+                <input class="auth-input" type="text" id="regLastName" placeholder="Last name">
+            </div>
+            <button class="step-next-btn" onclick="goToStep(2)">Next</button>
+            <div class="step-back-link" onclick="goToStep(0)">← Back to Log in</div>
+        </div>
+    </div>
+
+    <div id="step2Screen" class="auth-screen">
+        <div style="width:100%;max-width:420px;">
+            <div class="step-dots"><div class="step-dot"></div><div class="step-dot active"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div></div>
+            <div class="step-header"><div class="step-title">What's your birthday?</div><div class="step-sub">You can make this private later.</div></div>
+            <div class="dob-row">
+                <select class="dob-select" id="dobMonth"><option value="">Month</option><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option></select>
+                <select class="dob-select" id="dobDay"><option value="">Day</option></select>
+                <select class="dob-select" id="dobYear"><option value="">Year</option></select>
+            </div>
+            <button class="step-next-btn" onclick="goToStep(3)">Next</button>
+            <div class="step-back-link" onclick="goToStep(1)">← Back</div>
+        </div>
+    </div>
+
+    <div id="step3Screen" class="auth-screen">
+        <div style="width:100%;max-width:420px;">
+            <div class="step-dots"><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot active"></div><div class="step-dot"></div><div class="step-dot"></div></div>
+            <div class="step-header"><div class="step-title">Add profile & cover photo</div><div class="step-sub">Help friends recognize you.</div></div>
+            <div class="photo-cover-area" id="coverPhotoArea" onclick="document.getElementById('coverFileInput').click()">
+                <div class="photo-cover-bg" id="coverPreviewBg"></div>
+                <div class="photo-placeholder-txt" id="coverPlaceholderTxt">📷 Tap to add Cover Photo</div>
+                <div class="photo-pfp-ring" id="pfpRingBtn" onclick="event.stopPropagation();document.getElementById('pfpFileInput').click()">
+                    <div class="photo-pfp-inner" id="pfpPreviewInner"></div>
+                    <div class="photo-pfp-placeholder" id="pfpPlaceholderTxt">👤</div>
+                </div>
+            </div>
+            <input type="file" id="coverFileInput" accept="image/*" style="display:none" onchange="handlePhotoUpload(this,'cover')">
+            <input type="file" id="pfpFileInput" accept="image/*" style="display:none" onchange="handlePhotoUpload(this,'pfp')">
+            <div class="photo-step-labels">
+                <div style="font-size:12px;color:#B0B3B8;text-align:center;">Tap banner = cover • Tap circle = profile photo</div>
+                <div id="photoUploadStatus" style="font-size:12px;color:#0084FF;text-align:center;min-height:16px;"></div>
+            </div>
+            <button class="step-next-btn" style="margin-top:20px;" onclick="goToStep(4)">Next</button>
+            <div class="step-back-link" onclick="goToStep(2)">← Back</div>
+        </div>
+    </div>
+
+    <div id="step4Screen" class="auth-screen">
+        <div style="width:100%;max-width:420px;">
+            <div class="step-dots"><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot active"></div><div class="step-dot"></div></div>
+            <div class="step-header"><div class="step-title">Create your account</div><div class="step-sub">Enter a unique email and strong password.</div></div>
+            <input class="auth-input" type="email" id="regEmail" placeholder="Email address" autocomplete="username">
+            <input class="auth-input" type="password" id="regPassword" placeholder="New password (6+ characters)" autocomplete="new-password">
+            <input class="auth-input" type="password" id="regPassword2" placeholder="Confirm password" autocomplete="new-password">
+            <button class="step-next-btn" onclick="goToStep(5)">Next</button>
+            <div class="step-back-link" onclick="goToStep(3)">← Back</div>
+        </div>
+    </div>
+
+    <div id="step5Screen" class="auth-screen">
+        <div style="width:100%;max-width:420px;">
+            <div class="step-dots"><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot active"></div></div>
+            <div class="step-header"><div class="step-title">Almost done!</div><div class="step-sub">Review permissions and create your account.</div></div>
+            <div class="terms-box">
+                <div class="perm-item"><div class="perm-icon">📁</div><div class="perm-text"><b>Storage Access</b><br>To send photos/videos and upload profile pictures from your gallery.</div></div>
+                <div class="perm-item"><div class="perm-icon">🎤</div><div class="perm-text"><b>Microphone Access</b><br>To record and send voice messages.</div></div>
+                <div class="perm-item"><div class="perm-icon">📜</div><div class="perm-text"><b>Terms &amp; Privacy</b><br>By creating an account you agree to ChatBook's <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</div></div>
+            </div>
+            <button class="step-next-btn" id="finalCreateBtn" onclick="doRegister()">Create Account</button>
+            <div id="regErrorMsg" style="color:#FF3B30;font-size:13px;text-align:center;margin-top:10px;"></div>
+            <div class="step-back-link" onclick="goToStep(4)">← Back</div>
+        </div>
+    </div>
+</div>
+
+<!-- MAIN HEADER -->
+<header class="header" id="mainHeader" style="display:none;">
+    <div class="logo" onclick="switchMainTab('home-view',document.getElementById('tab-home'))">ChatBook</div>
+    <div class="search-box-container">
+        <input type="text" id="globalSearchInput" placeholder="🔍 নাম দিয়ে খুঁজুন...">
+        <button class="search-btn-go" onclick="triggerGlobalSearchPage()">Search</button>
+    </div>
+    <button class="theme-toggle-btn" onclick="toggleTheme(event)" title="Toggle Dark/Light">🌙</button>
+    <div class="notif-bell" onclick="toggleNotifPanel(event)" id="notifBellBtn">
+        <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+        <div class="notif-dot" id="notifDot"></div>
+    </div>
+</header>
+
+<div class="notif-panel" id="notifPanel" onclick="event.stopPropagation()">
+    <div class="notif-panel-header"><span>🔔 নোটিফিকেশন</span><span style="font-size:12px;color:var(--text-sub);cursor:pointer;" onclick="markAllRead()">সব পড়েছি</span></div>
+    <div id="notifList"><div class="notif-empty">কোনো নোটিফিকেশন নেই</div></div>
+</div>
+
+<div id="topLeaderboardBannerSlot" style="display:none;background:#f0f2f5;text-align:center;padding:6px 0;border-bottom:1px solid #e4e6eb;">
+    <div style="font-size:9px;color:#bbb;letter-spacing:0.5px;margin-bottom:2px;">— ADVERTISEMENT —</div>
+    <div id="topLeaderboardBannerInner"></div>
+</div>
+
+<!-- MAIN SCROLL AREA -->
+<div class="view-container" id="mainScrollWindow" style="display:none;">
+    <div id="home-view" class="view-page active">
+        <div class="story-tray-container" id="globalStoriesTray">
+            <div class="story-card-item" id="myStoryTriggerCard" onclick="openStoryCreateModal()" style="background-color:var(--fb-card-bg);">
+                <div class="story-create-btn-inside"><div class="story-plus-icon">+</div><span>Create Story</span></div>
+            </div>
+            <div id="dynamicStoriesWrapper" style="display:flex;gap:8px;"></div>
+        </div>
+        <div class="section-card">
+            <div class="create-post-container">
+                <div class="user-avatar-top current-user-pfp" onclick="navigateToProfileTab()"></div>
+                <div class="trigger-post-input" onclick="togglePostBox('homeCreator')">What's on your mind?</div>
+            </div>
+            <div id="homeCreator" class="post-creator-box">
+                <textarea id="homeText" rows="3" placeholder="ক্যাপশন লিখুন... 📝"></textarea>
+                <div class="file-select-area" onclick="document.getElementById('homeFileSelector').click()">
+                    <span class="file-icon">🖼️/🎬</span>
+                    <span class="file-status-text" id="homeFileStatus">ফটো বা ভিডিও সিলেক্ট করুন (গ্যালারি)</span>
+                </div>
+                <input type="file" id="homeFileSelector" accept="image/*,video/*" style="display:none;" onchange="handleFileSelection(this,'homeFileStatus')">
+                <div class="upload-progress-bar" id="homeUploadProgress"><div class="upload-progress-fill" id="homeUploadFill"></div></div>
+                <button class="post-submit-btn" id="homeSubmitBtn" onclick="publishSmartUniversalPost('homeText','homeFileSelector','homeCreator','homeUploadProgress','homeUploadFill','homeFileStatus')">Post</button>
+            </div>
+        </div>
+        <div id="newsFeedWrapper"></div>
+    </div>
+
+    <div id="video-view" class="view-page"><div id="videoWatchFeedWrapper"></div></div>
+
+    <div id="friends-tab-view" class="view-page">
+        <div class="section-card" id="reqBoxSection" style="display:none;">
+            <h3 style="font-size:17px;margin-bottom:12px;color:var(--text-main);">Friend requests <span id="reqCountBadge" style="color:red;">0</span></h3>
+            <div id="tabIncomingRequestsList"></div>
+        </div>
+        <div class="section-card">
+            <h3 style="font-size:17px;margin-bottom:4px;color:var(--text-main);">People you may know</h3>
+            <p style="font-size:12px;color:var(--text-sub);margin-bottom:12px;">ChatBook এর সকল মেম্বারদের তালিকা:</p>
+            <div id="globalSuggestionsList"></div>
+        </div>
+    </div>
+
+    <div id="profile-view" class="view-page">
+        <div class="profile-container">
+            <div class="cover-photo-frame" id="myCoverDisplay">
+                <div class="profile-avatar-frame"><div class="profile-avatar-inner" id="myPfpDisplay"></div></div>
+            </div>
+            <div class="profile-text-details">
+                <h2 id="profileNameTxt" style="color:var(--text-main);">Loading...</h2>
+                <p id="profileBioTxt" style="font-size:13px;color:var(--text-sub);margin-top:4px;"></p>
+                <div class="profile-stats-row"><span id="myFriendsCount" style="color:var(--fb-blue);font-weight:bold;">0 Friends</span></div>
+                <button class="edit-profile-btn" onclick="openProfileEditMenu()">⚙️ Edit Profile Settings</button>
+                <button class="admin-panel-btn" id="adminPanelBtn" style="display:none;" onclick="openAdminPanel()">⚡ Admin Panel খুলুন</button>
+            </div>
+        </div>
+        <div style="padding:12px;font-weight:bold;background:var(--fb-bg);margin-top:5px;border-bottom:1px solid var(--border-color);color:var(--text-main);">Your Timeline</div>
+        <div id="myPersonalWallFeed"></div>
+    </div>
+
+    <div id="search-view" class="view-page">
+        <div class="section-card" style="margin-top:8px;">
+            <h4 id="searchResultTitle" style="font-size:14px;color:var(--text-sub);margin-bottom:10px;">অনুসন্ধানের ফলাফল:</h4>
+            <div id="searchResultList"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Others Profile Modal -->
+<div id="othersProfileModal" class="profile-modal-view">
+    <div class="modal-close-header">
+        <div class="back-btn-ui" onclick="closeOthersProfileModal()">←</div>
+        <div style="font-weight:bold;color:var(--text-main);" id="modalHeaderTitle">User Profile</div>
+    </div>
+    <div class="profile-container">
+        <div class="cover-photo-frame" id="modalCoverDisplay">
+            <div class="profile-avatar-frame"><div class="profile-avatar-inner" id="modalPfpDisplay"></div></div>
+        </div>
+        <div class="profile-text-details">
+            <h2 id="modalNameTxt" style="color:var(--text-main);">Loading...</h2>
+            <p id="modalBioTxt" style="font-size:13px;color:var(--text-sub);margin-top:4px;"></p>
+            <div class="profile-stats-row"><span id="modalFriendsCount" style="color:var(--fb-blue);">0 Friends</span></div>
+            <div id="friendActionContainer"></div>
+            <button class="friend-btn-style" style="background:#E4E6EB;color:#000;margin-top:8px;" onclick="openMessengerWith(currentModalUid)">💬 Message</button>
+        </div>
+    </div>
+    <div style="padding:12px;font-weight:bold;background:var(--fb-bg);margin-top:5px;border-bottom:1px solid var(--border-color);color:var(--text-main);">User Timeline</div>
+    <div id="modalUserWallFeed"></div>
+</div>
+
+<!-- Story Lightbox -->
+<div id="storyLightbox" class="story-lightbox-modal">
+    <span class="lightbox-close-btn" onclick="closeStoryLightbox()">&times;</span>
+    <div class="lightbox-user-bar">
+        <div id="lightboxUserAvatar" style="width:36px;height:36px;border-radius:50%;background-size:cover;background-position:center;"></div>
+        <b id="lightboxUserName">Username</b>
+    </div>
+    <img id="lightboxMainImg" class="lightbox-img-frame" src="">
+</div>
+
+<!-- Story Create Modal -->
+<div id="storyCreateModal">
+    <div class="story-create-sheet">
+        <h3>📸 নতুন স্টোরি তৈরি করুন</h3>
+        <div class="file-select-area" onclick="document.getElementById('storyFileSelector').click()">
+            <span class="file-icon">🖼️/🎬</span>
+            <span class="file-status-text" id="storyFileStatus">ফটো বা ভিডিও সিলেক্ট করুন (গ্যালারি)</span>
+        </div>
+        <input type="file" id="storyFileSelector" accept="image/*,video/*" style="display:none;" onchange="handleFileSelection(this,'storyFileStatus')">
+        <div class="upload-progress-bar" id="storyUploadProgress"><div class="upload-progress-fill" id="storyUploadFill"></div></div>
+        <button class="story-submit-btn" id="storySubmitBtn" onclick="submitStoryCreate()">স্টোরি পোস্ট করুন</button>
+        <button class="story-cancel-btn" onclick="closeStoryCreateModal()">বাতিল করুন</button>
+    </div>
+</div>
+
+<!-- Profile Edit Modal -->
+<div class="report-modal" id="profileEditModal">
+    <div class="report-sheet" style="max-height:85vh;overflow-y:auto;">
+        <h3>⚙️ প্রোফাইল এডিট করুন</h3>
+        <label style="font-size:13px;color:var(--text-sub);font-weight:bold;display:block;margin-bottom:4px;">নাম</label>
+        <input type="text" id="peNameInput" placeholder="আপনার নাম লিখুন" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:14px;outline:none;background:var(--input-bg);color:var(--text-main);margin-bottom:12px;">
+        <label style="font-size:13px;color:var(--text-sub);font-weight:bold;display:block;margin-bottom:4px;">বায়ো</label>
+        <textarea id="peBioInput" rows="2" placeholder="আপনার বায়ো লিখুন" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:14px;outline:none;resize:none;background:var(--input-bg);color:var(--text-main);margin-bottom:12px;"></textarea>
+        <label style="font-size:13px;color:var(--text-sub);font-weight:bold;display:block;margin-bottom:4px;">প্রোফাইল পিকচার</label>
+        <div class="file-select-area" onclick="document.getElementById('pePfpInput').click()">
+            <span class="file-icon">🖼️</span>
+            <span class="file-status-text" id="pePfpStatus">গ্যালারি থেকে প্রোফাইল পিকচার সিলেক্ট করুন</span>
+        </div>
+        <input type="file" id="pePfpInput" accept="image/*" style="display:none;" onchange="document.getElementById('pePfpStatus').innerText=this.files[0]?'✅ Selected: '+this.files[0].name:'গ্যালারি থেকে প্রোফাইল পিকচার সিলেক্ট করুন'">
+        <label style="font-size:13px;color:var(--text-sub);font-weight:bold;display:block;margin-bottom:4px;margin-top:12px;">কভার ফটো</label>
+        <div class="file-select-area" onclick="document.getElementById('peCoverInput').click()">
+            <span class="file-icon">🖼️</span>
+            <span class="file-status-text" id="peCoverStatus">গ্যালারি থেকে কভার ফটো সিলেক্ট করুন</span>
+        </div>
+        <input type="file" id="peCoverInput" accept="image/*" style="display:none;" onchange="document.getElementById('peCoverStatus').innerText=this.files[0]?'✅ Selected: '+this.files[0].name:'গ্যালারি থেকে কভার ফটো সিলেক্ট করুন'">
+        <div class="upload-progress-bar" id="peProgress" style="margin-top:10px;"><div class="upload-progress-fill" id="peFill"></div></div>
+        <div id="peStatusMsg" style="font-size:12px;color:var(--fb-blue);text-align:center;min-height:16px;margin-top:4px;"></div>
+        <button class="report-reason-btn" id="peSaveBtn" style="background:var(--fb-blue);color:white;font-weight:bold;margin-top:10px;" onclick="saveProfileChanges()">✅ সেভ করুন</button>
+        <button class="report-cancel-btn" onclick="document.getElementById('profileEditModal').classList.remove('open')">বাতিল করুন</button>
+    </div>
+</div>
+
+<!-- Report Modal -->
+<div class="report-modal" id="reportModal">
+    <div class="report-sheet">
+        <h3>🚩 রিপোর্ট করুন</h3>
+        <button class="report-reason-btn" onclick="submitReport('স্প্যাম বা বিজ্ঞাপন')">🔴 স্প্যাম বা বিজ্ঞাপন</button>
+        <button class="report-reason-btn" onclick="submitReport('আপত্তিকর বা হয়রানিমূলক')">🔴 আপত্তিকর বা হয়রানিমূলক</button>
+        <button class="report-reason-btn" onclick="submitReport('ভুয়া তথ্য বা মিথ্যা')">🔴 ভুয়া তথ্য বা মিথ্যা</button>
+        <button class="report-reason-btn" onclick="submitReport('হিংসাত্মক বা বিপজ্জনক')">🔴 হিংসাত্মক বা বিপজ্জনক</button>
+        <button class="report-reason-btn" onclick="submitReport('অন্যান্য')">⚪ অন্যান্য</button>
+        <button class="report-cancel-btn" onclick="closeReportModal()">বাতিল করুন</button>
+    </div>
+</div>
+
+<!-- LUNEX AI MODAL -->
+<div id="lunexAIModal">
+    <div class="lunex-header">
+        <span class="lunex-back" onclick="closeLunexAI()">←</span>
+        <div class="lunex-avatar-hd">🤖</div>
+        <div class="lunex-header-info">
+            <div class="lunex-header-name">✨ Lunex AI</div>
+            <div class="lunex-header-status"><div class="lunex-status-dot"></div><span>সবসময় সক্রিয়</span></div>
+        </div>
+    </div>
+    <div class="lunex-intro" id="lunexIntro">
+        <div class="lunex-intro-avatar">🤖</div>
+        <div class="lunex-intro-name">✨ Lunex AI</div>
+        <div class="lunex-intro-sub">ChatBook এর বুদ্ধিমান সহকারী</div>
+        <div class="lunex-chips">
+            <div class="lunex-chip" onclick="sendLunexChip('একটা মজার জোকস বলো 😂')">😂 জোকস বলো</div>
+            <div class="lunex-chip" onclick="sendLunexChip('আমাকে একটা মজার গল্প বলো')">📖 মজার গল্প</div>
+            <div class="lunex-chip" onclick="sendLunexChip('তুমি কে? তোমার পরিচয় দাও')">🤖 তোমার পরিচয়</div>
+            <div class="lunex-chip" onclick="sendLunexChip('আজকের দিনটা কেমন যাচ্ছে?')">☀️ আজকের দিন</div>
+            <div class="lunex-chip" onclick="sendLunexChip('আমাকে একটা রোস্ট করো 🔥')">🔥 রোস্ট করো</div>
+            <div class="lunex-chip" onclick="sendLunexChip('বাংলাদেশ নিয়ে মজার কিছু বলো')">🇧🇩 বাংলাদেশ</div>
+        </div>
+    </div>
+    <div class="lunex-messages" id="lunexMessages"></div>
+    <div class="lunex-input-bar">
+        <textarea class="lunex-text-input" id="lunexInput" placeholder="Lunex AI কে কিছু জিজ্ঞেস করুন..." rows="1" oninput="autoResizeLunex(this)" onkeydown="lunexKeyDown(event)"></textarea>
+        <button class="lunex-send-btn" onclick="sendLunexMessage()">
+            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+    </div>
+</div>
+
+<!-- MESSENGER INBOX -->
+<div id="messengerInboxModal">
+    <div class="inbox-header">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h2>Messages</h2>
+            <div style="color:#B0B3B8;cursor:pointer;" onclick="closeMessengerInbox()">✕</div>
+        </div>
+        <input class="inbox-search" type="text" placeholder="🔍 Search Messenger" id="inboxSearchInput" oninput="filterInboxList()">
+    </div>
+    <div class="inbox-list" id="inboxListWrapper"></div>
+</div>
+
+<!-- MESSENGER CHAT -->
+<div id="messengerModal">
+    <div class="msng-header">
+        <span class="msng-back" onclick="closeMessengerChat()">←</span>
+        <div class="msng-header-avatar" id="msngHeaderAvatar"></div>
+        <div class="msng-header-info">
+            <div class="msng-header-name" id="msngHeaderName">User</div>
+            <div class="msng-header-status"><div class="msng-online-dot"></div><span>Active now</span></div>
+        </div>
+        <div class="msng-call-btns">
+            <button class="msng-call-btn"><svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg></button>
+            <button class="msng-call-btn"><svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg></button>
+        </div>
+    </div>
+    <div class="msng-profile-intro" id="msngProfileIntro">
+        <div class="msng-intro-avatar" id="msngIntroAvatar"><div class="msng-intro-online-dot"></div></div>
+        <div class="msng-intro-name" id="msngIntroName"></div>
+        <div class="msng-intro-sub" id="msngIntroSub">You're friends on ChatBook</div>
+    </div>
+    <div class="msng-messages-list" id="msngMessagesList"></div>
+    <div class="msng-upload-bar" id="msngUploadBar">
+        <div class="msng-upload-bar-inner"><div class="msng-upload-bar-fill" id="msngUploadFill"></div></div>
+        <div class="msng-upload-status" id="msngUploadStatus">আপলোড হচ্ছে...</div>
+    </div>
+    <div class="msng-input-bar">
+        <button class="msng-action-btn" onclick="document.getElementById('msngFileInput').click()">
+            <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+        </button>
+        <input type="file" id="msngFileInput" accept="image/*,video/*" style="display:none;" onchange="handleMsngFileUpload(this)">
+        <textarea class="msng-text-input" id="msngTextInput" placeholder="Aa" rows="1" oninput="autoResizeMsngInput(this)" onkeydown="msngKeyDown(event)"></textarea>
+        <button class="msng-mic-btn" id="msngMicBtn" onclick="toggleVoiceRecording()">
+            <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
+        </button>
+        <button class="msng-send-btn" id="msngSendBtn" onclick="sendMsngMessage()" style="display:none;">
+            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+        <button class="msng-thumb-btn" id="msngThumbBtn" onclick="sendThumbsUp()">👍</button>
+    </div>
+</div>
+
+<nav class="bottom-nav-bar" id="mainNavBar" style="display:none;">
+    <div class="bottom-tab active" id="tab-home" onclick="switchMainTab('home-view',this)"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>
+    <div class="bottom-tab" id="tab-video" onclick="switchMainTab('video-view',this)"><svg viewBox="0 0 24 24"><path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7V9.5l5 2.5-5 2.5V13z"/></svg></div>
+    <div class="bottom-tab" id="tab-friends" onclick="switchMainTab('friends-tab-view',this)"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></div>
+    <div class="bottom-tab" id="tab-messenger" onclick="openMessengerInbox()"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg></div>
+    <div class="bottom-tab" id="tab-profile" onclick="navigateToProfileTab()"><div class="user-avatar-top current-user-pfp" style="width:26px;height:26px;border:1px solid #ced0d4;"></div></div>
+</nav>
+
+<script>
+const firebaseConfig = {
+    apiKey:"AIzaSyBMh-IhpSZY1xvFmrMj5Ts3nEnOB_kRi_A",
+    authDomain:"lautar-vai.firebaseapp.com",
+    databaseURL:"https://lautar-vai-default-rtdb.firebaseio.com",
+    projectId:"lautar-vai",
+    storageBucket:"lautar-vai.firebasestorage.app",
+    messagingSenderId:"69925901312",
+    appId:"1:69925901312:web:78fde2071b94916d36f4e5"
+};
+if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const auth = firebase.auth();
+
+const ADMIN_UIDS = ["TOMAR_UID_EKHANE_BOSAO"];
+
+// ✅ FIXED: Netlify Function দিয়ে Catbox upload — browser CORS সমস্যা নেই
+const CATBOX_API = "/api/catbox";
+const CATBOX_USER_HASH = "9c5667528911d2952f9094756";
+
+// ✅ সব জায়গায় একই upload function
+async function uploadFileToCatbox(file) {
+    const formData = new FormData();
+    formData.append("reqtype", "fileupload");
+    formData.append("userhash", CATBOX_USER_HASH);
+    formData.append("fileToUpload", file);
+    const resp = await fetch(CATBOX_API, { method: "POST", body: formData });
+    if (!resp.ok) throw new Error("Server error: " + resp.status);
+    const url = (await resp.text()).trim();
+    if (url.startsWith("http")) return url.replace("http://", "https://");
+    throw new Error("আপলোড ব্যর্থ: " + url);
+}
+
+let globalCurrentUid = "";
+const defaultProfileAvatar = "https://180dc.org/wp-content/uploads/2016/08/default-avatar.png";
+const defaultCoverBackground = "https://htmlcolorcodes.com/assets/images/colors/light-gray-color-solid-background-1920x1080.png";
+let currentSavedName = "";
+let currentSavedBio = "";
+let currentSavedPfp = defaultProfileAvatar;
+let currentSavedCover = defaultCoverBackground;
+const reactMap = {'like':'👍 Like','love':'❤️ Love','care':'🥰 Care','haha':'😆 Haha','wow':'😮 Wow','sad':'😢 Sad','angry':'😡 Angry'};
+let reportTargetPostId = null;
+let adBannerEnabled = false;
+let adPopunderEnabled = false;
+var bannerQueue = [];
+var bannerQueueRunning = false;
+let regData = { firstName:'', lastName:'', dob:'', pfpUrl:'', coverUrl:'', email:'', password:'' };
+let currentModalUid = '';
+
+// =================== THEME ===================
+function toggleTheme(e) {
+    e && e.stopPropagation();
+    let isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if(isDark) { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('theme','light'); document.querySelector('.theme-toggle-btn').innerText='🌙'; }
+    else { document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('theme','dark'); document.querySelector('.theme-toggle-btn').innerText='☀️'; }
+}
+function initTheme() {
+    let t = localStorage.getItem('theme') || 'light';
+    if(t === 'dark') { document.documentElement.setAttribute('data-theme','dark'); let btn=document.querySelector('.theme-toggle-btn'); if(btn)btn.innerText='☀️'; }
+}
+initTheme();
+
+// =================== AUTH STEPS ===================
+function goToStep(step) {
+    document.querySelectorAll('.auth-screen').forEach(s => s.classList.remove('active'));
+    if(step === 0) document.getElementById('loginScreen').classList.add('active');
+    else document.getElementById('step'+step+'Screen').classList.add('active');
+}
+(function() {
+    let daySelect=document.getElementById('dobDay'); let yearSelect=document.getElementById('dobYear');
+    for(let d=1;d<=31;d++){let o=document.createElement('option');o.value=d;o.text=d;daySelect.appendChild(o);}
+    let curYear=new Date().getFullYear();
+    for(let y=curYear;y>=1920;y--){let o=document.createElement('option');o.value=y;o.text=y;yearSelect.appendChild(o);}
+})();
+
+async function doLogin() {
+    let email=document.getElementById('loginEmail').value.trim();
+    let pass=document.getElementById('loginPassword').value;
+    if(!email||!pass){alert('সব ঘর পূরণ করুন');return;}
+    try { await auth.signInWithEmailAndPassword(email,pass); }
+    catch(e) { alert('লগইন ব্যর্থ: '+e.message); }
+}
+async function doForgotPassword() {
+    let email=prompt('আপনার ইমেইল দিন:');
+    if(!email)return;
+    try{await auth.sendPasswordResetEmail(email);alert('পাসওয়ার্ড রিসেট ইমেইল পাঠানো হয়েছে!');}
+    catch(e){alert('ত্রুটি: '+e.message);}
+}
+
+async function handlePhotoUpload(input, type) {
+    let file=input.files[0]; if(!file)return;
+    let statusEl=document.getElementById('photoUploadStatus');
+    statusEl.innerText='⏳ আপলোড হচ্ছে...';
+    try {
+        let url=await uploadFileToCatbox(file);
+        if(type==='cover'){
+            regData.coverUrl=url;
+            document.getElementById('coverPreviewBg').style.cssText=`background-image:url('${url}');background-size:cover;background-position:center;width:100%;height:100%;`;
+            document.getElementById('coverPlaceholderTxt').style.display='none';
+            document.getElementById('coverPhotoArea').classList.add('has-photo');
+        } else {
+            regData.pfpUrl=url;
+            document.getElementById('pfpPreviewInner').style.cssText=`background-image:url('${url}');background-size:cover;background-position:center;`;
+            document.getElementById('pfpPlaceholderTxt').style.display='none';
+        }
+        statusEl.innerText='✅ আপলোড সফল!';
+    } catch(e) {
+        statusEl.innerText='❌ আপলোড ব্যর্থ — ইন্টারনেট চেক করুন।';
+    }
+}
+
+async function doRegister() {
+    let firstName=document.getElementById('regFirstName').value.trim();
+    let lastName=document.getElementById('regLastName').value.trim();
+    let email=document.getElementById('regEmail').value.trim();
+    let pass=document.getElementById('regPassword').value;
+    let pass2=document.getElementById('regPassword2').value;
+    let errDiv=document.getElementById('regErrorMsg');
+    errDiv.innerText='';
+    if(!firstName){errDiv.innerText='প্রথম নাম দিন';return;}
+    if(!email){errDiv.innerText='ইমেইল দিন';return;}
+    if(pass.length<6){errDiv.innerText='পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে';return;}
+    if(pass!==pass2){errDiv.innerText='পাসওয়ার্ড মিলছে না';return;}
+    document.getElementById('finalCreateBtn').disabled=true;
+    document.getElementById('finalCreateBtn').innerText='Creating...';
+    try {
+        let cred=await auth.createUserWithEmailAndPassword(email,pass);
+        let uid=cred.user.uid;
+        let fullName=(firstName+' '+lastName).trim();
+        let pfp=regData.pfpUrl||defaultProfileAvatar;
+        let cover=regData.coverUrl||defaultCoverBackground;
+        await db.ref('users_metadata/'+uid).set({uid,name:fullName,bio:'Welcome to ChatBook!',pfp,cover,joinTime:Date.now()});
+        localStorage.setItem('user_profile_name',fullName);
+        localStorage.setItem('user_profile_bio','Welcome to ChatBook!');
+        localStorage.setItem('user_pfp_link',pfp);
+        localStorage.setItem('user_cover_link',cover);
+    } catch(e) {
+        errDiv.innerText='ত্রুটি: '+e.message;
+        document.getElementById('finalCreateBtn').disabled=false;
+        document.getElementById('finalCreateBtn').innerText='Create Account';
+    }
+}
+
+// =================== AUTH STATE ===================
+auth.onAuthStateChanged((user) => {
+    if(user) {
+        globalCurrentUid=user.uid;
+        document.getElementById('authOverlay').style.display='none';
+        document.getElementById('mainHeader').style.display='flex';
+        document.getElementById('mainScrollWindow').style.display='block';
+        document.getElementById('mainNavBar').style.display='flex';
+        initializeUserSession(user.uid);
+    }
+});
+
+function initializeUserSession(uid) {
+    db.ref('users_metadata/'+uid).once('value',snap=>{
+        let d=snap.val();
+        if(d){
+            currentSavedName=d.name||'User';
+            currentSavedBio=d.bio||'';
+            currentSavedPfp=d.pfp||defaultProfileAvatar;
+            currentSavedCover=d.cover||defaultCoverBackground;
+        } else {
+            currentSavedName=localStorage.getItem('user_profile_name')||'User_'+uid.substring(0,5);
+            currentSavedBio=localStorage.getItem('user_profile_bio')||'Welcome to ChatBook!';
+            currentSavedPfp=localStorage.getItem('user_pfp_link')||defaultProfileAvatar;
+            currentSavedCover=localStorage.getItem('user_cover_link')||defaultCoverBackground;
+            db.ref('users_metadata/'+uid).set({uid,name:currentSavedName,bio:currentSavedBio,pfp:currentSavedPfp,cover:currentSavedCover,joinTime:Date.now()});
+        }
+        if(ADMIN_UIDS.includes(uid))document.getElementById('adminPanelBtn').style.display='block';
+        updateProfileUI();
+        syncDataEngine();
+        listenToIncomingRequests();
+        listenToPeopleYouMayKnow();
+        listenToFriendsCount(uid,'myFriendsCount');
+        listenToLiveStories();
+        listenToNotifications();
+        checkIfBlocked(uid);
+        listenToAdSettings();
+        loadInboxList();
+    });
+}
+
+function checkIfBlocked(uid){
+    db.ref('users_metadata/'+uid+'/blocked').on('value',snap=>{
+        if(snap.val()===true){document.body.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#f0f2f5;padding:20px;text-align:center;"><div style="font-size:60px;margin-bottom:16px;">🚫</div><h2 style="color:#d32f2f;margin-bottom:8px;">অ্যাকাউন্ট সাসপেন্ড</h2></div>`;}
+    });
+}
+
+function updateProfileUI(){
+    document.getElementById('profileNameTxt').innerText=currentSavedName;
+    document.getElementById('profileBioTxt').innerText=currentSavedBio;
+    document.getElementById('myPfpDisplay').style.backgroundImage=`url('${currentSavedPfp}')`;
+    document.getElementById('myCoverDisplay').style.backgroundImage=`url('${currentSavedCover}')`;
+    document.getElementById('myStoryTriggerCard').style.backgroundImage=`linear-gradient(to bottom,rgba(0,0,0,0) 60%,rgba(0,0,0,0.6) 100%),url('${currentSavedPfp}')`;
+    document.querySelectorAll('.current-user-pfp').forEach(el=>el.style.backgroundImage=`url('${currentSavedPfp}')`);
+}
+
+function openProfileEditMenu(){
+    document.getElementById('profileEditModal').classList.add('open');
+    document.getElementById('peNameInput').value=currentSavedName;
+    document.getElementById('peBioInput').value=currentSavedBio;
+    document.getElementById('pePfpStatus').innerText='গ্যালারি থেকে প্রোফাইল পিকচার সিলেক্ট করুন';
+    document.getElementById('peCoverStatus').innerText='গ্যালারি থেকে কভার ফটো সিলেক্ট করুন';
+    document.getElementById('pePfpInput').value='';
+    document.getElementById('peCoverInput').value='';
+    document.getElementById('peProgress').style.display='none';
+    document.getElementById('peFill').style.width='0%';
+    document.getElementById('peSaveBtn').disabled=false;
+}
+function openAdminPanel(){window.open('chatbook-admin.html','_blank');}
+
+async function saveProfileChanges(){
+    let newName=document.getElementById('peNameInput').value.trim();
+    let newBio=document.getElementById('peBioInput').value.trim();
+    let pfpFile=document.getElementById('pePfpInput').files[0];
+    let coverFile=document.getElementById('peCoverInput').files[0];
+    let saveBtn=document.getElementById('peSaveBtn');
+    let progress=document.getElementById('peProgress');
+    let fill=document.getElementById('peFill');
+    let statusMsg=document.getElementById('peStatusMsg');
+    if(!newName){alert('নাম দিন!');return;}
+    saveBtn.disabled=true;
+    let cp=0; let pi=null;
+    if(pfpFile||coverFile){
+        progress.style.display='block';fill.style.width='0%';
+        statusMsg.innerText='আপলোড হচ্ছে...';
+        pi=setInterval(()=>{cp=Math.min(cp+Math.random()*12,85);fill.style.width=cp+'%';},300);
+    }
+    try{
+        if(pfpFile){ let url=await uploadFileToCatbox(pfpFile); currentSavedPfp=url; localStorage.setItem('user_pfp_link',url); }
+        if(coverFile){ let url=await uploadFileToCatbox(coverFile); currentSavedCover=url; localStorage.setItem('user_cover_link',url); }
+        if(pi)clearInterval(pi);
+        if(pfpFile||coverFile){fill.style.width='100%';statusMsg.innerText='✅ আপলোড সফল!';}
+        currentSavedName=newName; currentSavedBio=newBio;
+        localStorage.setItem('user_profile_name',currentSavedName);
+        localStorage.setItem('user_profile_bio',currentSavedBio);
+        db.ref('users_metadata/'+globalCurrentUid).update({name:currentSavedName,bio:currentSavedBio,pfp:currentSavedPfp,cover:currentSavedCover});
+        updateProfileUI();
+        setTimeout(()=>{
+            document.getElementById('profileEditModal').classList.remove('open');
+            progress.style.display='none';fill.style.width='0%';statusMsg.innerText='';saveBtn.disabled=false;
+        },800);
+    }catch(e){
+        if(pi)clearInterval(pi);
+        statusMsg.innerText='❌ আপলোড ব্যর্থ! ইন্টারনেট চেক করুন।';
+        progress.style.display='none';fill.style.width='0%';saveBtn.disabled=false;
+    }
+}
+
+// =================== NOTIFICATIONS ===================
+function listenToNotifications(){
+    db.ref('admin_notifications').on('value',snap=>{
+        let data=snap.val()||{}; let notifs=Object.values(data).reverse(); let lw=document.getElementById('notifList');
+        if(!notifs.length){lw.innerHTML='<div class="notif-empty">কোনো নোটিফিকেশন নেই</div>';document.getElementById('notifDot').style.display='none';return;}
+        document.getElementById('notifDot').style.display='block';
+        lw.innerHTML=notifs.map(n=>`<div class="notif-item"><div class="notif-item-icon">📣</div><div class="notif-item-text"><div class="notif-item-title">${n.title}</div><div class="notif-item-body">${n.body}</div><div class="notif-item-time">${formatTime(n.timestamp)}</div></div></div>`).join('');
+    });
+}
+function toggleNotifPanel(e){e.stopPropagation();let p=document.getElementById('notifPanel');p.style.display=p.style.display==='block'?'none':'block';}
+function markAllRead(){document.getElementById('notifDot').style.display='none';document.getElementById('notifPanel').style.display='none';}
+
+// =================== ADS ===================
+function getBannerAdHTML(){
+    if(!adBannerEnabled)return'';
+    var uid='bslot_'+Date.now()+'_'+Math.floor(Math.random()*999999);
+    setTimeout(function(){enqueueBanner(uid);},200);
+    return `<div class="ad-banner-wrapper"><div class="ad-banner-label">— ADVERTISEMENT —</div><div id="${uid}" style="width:320px;max-width:100%;height:50px;margin:0 auto;overflow:hidden;"></div></div>`;
+}
+function enqueueBanner(uid){bannerQueue.push(uid);if(!bannerQueueRunning)processBannerQueue();}
+function processBannerQueue(){
+    if(!bannerQueue.length){bannerQueueRunning=false;return;}bannerQueueRunning=true;
+    var uid=bannerQueue.shift();var container=document.getElementById(uid);
+    if(!container){processBannerQueue();return;}
+    window.atOptions={'key':'ee2113d00d4728fdb1a3c5fe21b16988','format':'iframe','height':50,'width':320,'params':{}};
+    var sc=document.createElement('script');sc.type='text/javascript';sc.src='https://www.highperformanceformat.com/ee2113d00d4728fdb1a3c5fe21b16988/invoke.js?r='+Math.random();
+    sc.onload=function(){setTimeout(processBannerQueue,800);};sc.onerror=function(){setTimeout(processBannerQueue,800);};
+    container.appendChild(sc);
+}
+function toggleTopLeaderboard(show){
+    var slot=document.getElementById('topLeaderboardBannerSlot');
+    if(!show){slot.style.display='none';return;}
+    if(slot.dataset.loaded==='1'){slot.style.display='block';return;}
+    slot.dataset.loaded='1';slot.style.display='block';
+    var inner=document.getElementById('topLeaderboardBannerInner');
+    window.atOptions={'key':'b2a50244fce73b9dc189a36f9b370771','format':'iframe','height':60,'width':468,'params':{}};
+    var sc=document.createElement('script');sc.type='text/javascript';sc.src='https://www.highperformanceformat.com/b2a50244fce73b9dc189a36f9b370771/invoke.js';
+    inner.appendChild(sc);
+}
+let popunderReady=false,popunderTimer=null,popunderScriptInjected=false;
+function startPopunderSystem(){
+    stopPopunderSystem();
+    if(!popunderScriptInjected){popunderScriptInjected=true;var sc=document.createElement('script');sc.src='https://pl29507163.effectivecpmnetwork.com/09/80/6d/09806d6fd976f651d28e918860d46896.js';document.head.appendChild(sc);}
+    popunderTimer=setInterval(function(){popunderReady=true;},60000);
+}
+function stopPopunderSystem(){if(popunderTimer){clearInterval(popunderTimer);popunderTimer=null;}popunderReady=false;}
+document.addEventListener('click',function(){
+    if(!popunderReady||!adPopunderEnabled)return;popunderReady=false;
+    try{var pw=window.open('https://www.effectivecpmnetwork.com/vzvpwhciy?key=62e6f5e257631997b229a0647cfd0825','_blank');if(pw)window.focus();}catch(e){}
+},true);
+function listenToAdSettings(){
+    db.ref('admin_ad_settings').on('value',snap=>{
+        var d=snap.val()||{};
+        var wasBanner=adBannerEnabled,wasPopunder=adPopunderEnabled;
+        adBannerEnabled=d.bannerEnabled===true;adPopunderEnabled=d.popunderEnabled===true;
+        if(adBannerEnabled!==wasBanner){toggleTopLeaderboard(adBannerEnabled);syncDataEngine();}
+        if(adPopunderEnabled&&!wasPopunder)startPopunderSystem();
+        else if(!adPopunderEnabled&&wasPopunder)stopPopunderSystem();
+    });
+}
+
+// =================== STORIES ===================
+function openStoryCreateModal(){
+    document.getElementById('storyCreateModal').classList.add('open');
+    document.getElementById('storyFileStatus').innerText='ফটো বা ভিডিও সিলেক্ট করুন (গ্যালারি)';
+    document.getElementById('storyFileSelector').value='';
+    document.getElementById('storyUploadProgress').style.display='none';
+    document.getElementById('storyUploadFill').style.width='0%';
+    document.getElementById('storySubmitBtn').disabled=false;
+}
+function closeStoryCreateModal(){ document.getElementById('storyCreateModal').classList.remove('open'); }
+
+async function submitStoryCreate(){
+    let fileInput=document.getElementById('storyFileSelector');
+    let selectedFile=fileInput.files[0];
+    let submitBtn=document.getElementById('storySubmitBtn');
+    let progressBar=document.getElementById('storyUploadProgress');
+    let progressFill=document.getElementById('storyUploadFill');
+    let statusLabel=document.getElementById('storyFileStatus');
+    if(!selectedFile){alert('গ্যালারি থেকে ফটো বা ভিডিও সিলেক্ট করুন!');return;}
+    submitBtn.disabled=true;
+    progressBar.style.display='block';
+    statusLabel.innerText='আপলোড হচ্ছে...';
+    let cp=0;
+    let pi=setInterval(()=>{cp=Math.min(cp+Math.random()*15,85);progressFill.style.width=cp+'%';},300);
+    try{
+        let url=await uploadFileToCatbox(selectedFile);
+        clearInterval(pi);progressFill.style.width='100%';statusLabel.innerText='✅ সফল!';
+        let storyId="story_"+Date.now();
+        await db.ref('global_stories/'+storyId).set({
+            id:storyId,senderId:globalCurrentUid,userName:currentSavedName,
+            userAvatar:currentSavedPfp,storyImage:url,timestamp:Date.now()
+        });
+        closeStoryCreateModal();
+        alert('✅ স্টোরি পোস্ট হয়েছে!');
+    }catch(e){
+        clearInterval(pi);
+        alert('❌ আপলোড ব্যর্থ! ইন্টারনেট চেক করুন।');
+        submitBtn.disabled=false;progressBar.style.display='none';progressFill.style.width='0%';
+        statusLabel.innerText='ফটো বা ভিডিও সিলেক্ট করুন (গ্যালারি)';
+    }
+}
+
+function listenToLiveStories(){
+    db.ref('global_stories').on('value',snapshot=>{
+        let data=snapshot.val()||{};let wrapper=document.getElementById('dynamicStoriesWrapper');wrapper.innerHTML='';
+        let now=Date.now();
+        Object.values(data).reverse().forEach(story=>{
+            if(now-story.timestamp>86400000){db.ref('global_stories/'+story.id).remove();return;}
+            wrapper.innerHTML+=`<div class="story-card-item" style="background-image:linear-gradient(to bottom,rgba(0,0,0,0.2) 0%,rgba(0,0,0,0.7) 100%),url('${story.storyImage}');" onclick="openStoryLightbox('${story.storyImage}','${story.userName}','${story.userAvatar}')"><div class="story-user-avatar" style="background-image:url('${story.userAvatar}');"></div><div class="story-username-txt">${story.userName}</div></div>`;
+        });
+    });
+}
+function openStoryLightbox(imgUrl,userName,userAvatar){
+    document.getElementById('lightboxMainImg').src=imgUrl;
+    document.getElementById('lightboxUserName').innerText=userName;
+    document.getElementById('lightboxUserAvatar').style.backgroundImage=`url('${userAvatar}')`;
+    document.getElementById('storyLightbox').style.display='flex';
+}
+function closeStoryLightbox(){document.getElementById('storyLightbox').style.display='none';}
+
+// =================== FRIENDS ===================
+function listenToPeopleYouMayKnow(){
+    db.ref('users_metadata').on('value',usersSnapshot=>{
+        let users=usersSnapshot.val()||{};
+        db.ref(`friend_requests/${globalCurrentUid}`).on('value',reqSnapshot=>{
+            let myRequests=reqSnapshot.val()||{};
+            db.ref(`friends_list/${globalCurrentUid}`).on('value',friendSnapshot=>{
+                let myFriends=friendSnapshot.val()||{};
+                let wrap=document.getElementById('globalSuggestionsList');wrap.innerHTML='';let has=false;
+                Object.values(users).forEach(user=>{
+                    if(user.uid===globalCurrentUid)return;has=true;
+                    let status='none';
+                    if(myFriends[user.uid])status='friends';
+                    else if(myRequests[user.uid]==='outgoing')status='outgoing';
+                    else if(myRequests[user.uid]==='incoming')status='incoming';
+                    let btnHTML='';
+                    if(status==='friends')btnHTML=`<button class="fb-btn-secondary" onclick="handleFriendAction('${user.uid}','friends')">Unfriend</button>`;
+                    else if(status==='outgoing')btnHTML=`<button class="fb-btn-secondary" onclick="handleFriendAction('${user.uid}','outgoing')">Cancel Request</button>`;
+                    else if(status==='incoming')btnHTML=`<button class="fb-btn-primary" onclick="acceptFriendRequest('${user.uid}')">Confirm</button>`;
+                    else btnHTML=`<button class="fb-btn-primary" onclick="handleFriendAction('${user.uid}','none')">Add Friend</button>`;
+                    wrap.innerHTML+=`<div class="fb-suggestion-item"><div class="fb-suggestion-avatar" style="background-image:url('${user.pfp||defaultProfileAvatar}');" onclick="openOthersProfile('${user.uid}')"></div><div class="fb-suggestion-right"><b style="font-size:15px;color:var(--text-main);" onclick="openOthersProfile('${user.uid}')">${user.name}</b><div class="fb-suggestion-btn-row">${btnHTML}<button class="fb-btn-secondary" onclick="this.parentElement.parentElement.parentElement.remove()">Remove</button></div></div></div>`;
+                });
+                if(!has)wrap.innerHTML="<p style='text-align:center;padding:20px;color:var(--text-sub);'>এখনো কোনো মেম্বার নেই!</p>";
+            });
+        });
+    });
+}
+function listenToIncomingRequests(){
+    db.ref(`friend_requests/${globalCurrentUid}`).on('value',snapshot=>{
+        let reqs=snapshot.val()||{};let container=document.getElementById('reqBoxSection');let lw=document.getElementById('tabIncomingRequestsList');lw.innerHTML='';let count=0;
+        Object.keys(reqs).forEach(senderUid=>{
+            if(reqs[senderUid]==='incoming'){count++;db.ref(`users_metadata/${senderUid}`).once('value',uSnap=>{let u=uSnap.val();if(u)lw.innerHTML+=`<div class="fb-suggestion-item"><div class="fb-suggestion-avatar" style="background-image:url('${u.pfp||defaultProfileAvatar}');" onclick="openOthersProfile('${u.uid}')"></div><div class="fb-suggestion-right"><b style="font-size:15px;color:var(--text-main);">${u.name}</b><div class="fb-suggestion-btn-row"><button class="fb-btn-primary" onclick="acceptFriendRequest('${u.uid}')">Confirm</button><button class="fb-btn-secondary" onclick="handleFriendAction('${u.uid}','incoming')">Delete</button></div></div></div>`;});}
+        });
+        container.style.display=count>0?'block':'none';
+        if(count>0)document.getElementById('reqCountBadge').innerText=count;
+    });
+}
+function handleFriendAction(targetUid,currentStatus){
+    if(!globalCurrentUid||!targetUid)return;
+    if(currentStatus==='none'){db.ref(`friend_requests/${targetUid}/${globalCurrentUid}`).set('incoming');db.ref(`friend_requests/${globalCurrentUid}/${targetUid}`).set('outgoing');}
+    else if(currentStatus==='outgoing'||currentStatus==='incoming'){db.ref(`friend_requests/${targetUid}/${globalCurrentUid}`).remove();db.ref(`friend_requests/${globalCurrentUid}/${targetUid}`).remove();}
+    else if(currentStatus==='friends'){if(confirm("আনফ্রেন্ড করতে চান?")){db.ref(`friends_list/${globalCurrentUid}/${targetUid}`).remove();db.ref(`friends_list/${targetUid}/${globalCurrentUid}`).remove();}}
+}
+function acceptFriendRequest(senderUid){
+    db.ref(`friend_requests/${globalCurrentUid}/${senderUid}`).remove();
+    db.ref(`friend_requests/${senderUid}/${globalCurrentUid}`).remove();
+    db.ref(`friends_list/${globalCurrentUid}/${senderUid}`).set(true);
+    db.ref(`friends_list/${senderUid}/${globalCurrentUid}`).set(true);
+}
+function listenToFriendsCount(uid,elementId){
+    db.ref(`friends_list/${uid}`).on('value',snap=>{let len=snap.val()?Object.keys(snap.val()).length:0;document.getElementById(elementId).innerText=len+" Friends";});
+}
+
+// =================== SEARCH ===================
+function triggerGlobalSearchPage(){
+    let query=document.getElementById('globalSearchInput').value.trim();
+    if(!query)return;
+    switchMainTab('search-view',null);
+    document.getElementById('searchResultTitle').innerText=`"${query}" এর জন্য সার্চ রেজাল্ট:`;
+    db.ref('users_metadata').once('value',snapshot=>{
+        let users=snapshot.val()||{};let lw=document.getElementById('searchResultList');lw.innerHTML='';let found=false;
+        Object.values(users).forEach(user=>{
+            if(user.name.toLowerCase().includes(query.toLowerCase())){found=true;lw.innerHTML+=`<div class="search-user-card" onclick="openOthersProfile('${user.uid}')"><div style="display:flex;align-items:center;gap:10px;"><div style="width:45px;height:45px;border-radius:50%;background-image:url('${user.pfp||defaultProfileAvatar}');background-size:cover;background-position:center;"></div><div><b style="color:var(--text-main);">${user.name}</b></div></div><div style="color:var(--fb-blue);font-size:12px;font-weight:bold;">View Profile →</div></div>`;}
+        });
+        if(!found)lw.innerHTML="<p style='padding:20px;text-align:center;'>❌ কোনো আইডি পাওয়া যায়নি!</p>";
+    });
+}
+
+// =================== PROFILE MODAL ===================
+function openOthersProfile(targetUid){
+    if(targetUid===globalCurrentUid){navigateToProfileTab();return;}
+    currentModalUid=targetUid;
+    document.getElementById('othersProfileModal').style.display='block';
+    db.ref('users_metadata/'+targetUid).on('value',snap=>{
+        let u=snap.val();
+        if(u){document.getElementById('modalHeaderTitle').innerText=u.name;document.getElementById('modalNameTxt').innerText=u.name;document.getElementById('modalBioTxt').innerText=u.bio||'';document.getElementById('modalPfpDisplay').style.backgroundImage=`url('${u.pfp||defaultProfileAvatar}')`;document.getElementById('modalCoverDisplay').style.backgroundImage=`url('${u.cover||defaultCoverBackground}')`;}
+    });
+    listenToFriendsCount(targetUid,'modalFriendsCount');
+    db.ref(`friend_requests/${globalCurrentUid}/${targetUid}`).on('value',rSnap=>{
+        let rStatus=rSnap.val();
+        db.ref(`friends_list/${globalCurrentUid}/${targetUid}`).on('value',fSnap=>{
+            let isFriend=fSnap.exists();
+            let btnCont=document.getElementById('friendActionContainer');
+            if(isFriend)btnCont.innerHTML=`<button class="friend-btn-style is-friend" onclick="handleFriendAction('${targetUid}','friends')">✓ Friends (Unfriend)</button>`;
+            else if(rStatus==='outgoing')btnCont.innerHTML=`<button class="friend-btn-style" style="background:#ccc;color:#000;" onclick="handleFriendAction('${targetUid}','outgoing')">Cancel Request</button>`;
+            else if(rStatus==='incoming')btnCont.innerHTML=`<button class="friend-btn-style" onclick="acceptFriendRequest('${targetUid}')">Confirm Request</button>`;
+            else btnCont.innerHTML=`<button class="friend-btn-style" onclick="handleFriendAction('${targetUid}','none')">➕ Add Friend</button>`;
+        });
+    });
+    db.ref('global_posts').on('value',snapshot=>{
+        let data=snapshot.val()||{};let wrap=document.getElementById('modalUserWallFeed');wrap.innerHTML='';
+        Object.values(data).reverse().forEach(post=>{if(post.senderId===targetUid)wrap.innerHTML+=renderSinglePostHTMLCard(post,false);});
+    });
+}
+function closeOthersProfileModal(){document.getElementById('othersProfileModal').style.display='none';}
+
+// =================== REPORT ===================
+function openReportModal(postId){event.stopPropagation();reportTargetPostId=postId;document.getElementById('reportModal').classList.add('open');}
+function closeReportModal(){document.getElementById('reportModal').classList.remove('open');reportTargetPostId=null;}
+function submitReport(reason){if(!reportTargetPostId)return;db.ref('admin_reports').push({postId:reportTargetPostId,reporter:currentSavedName,reporterUid:globalCurrentUid,description:reason,timestamp:Date.now()}).then(()=>{closeReportModal();alert('✅ রিপোর্ট পাঠানো হয়েছে।');});}
+
+// =================== FILE SELECTION ===================
+function handleFileSelection(inputElement, statusTextId){
+    let file=inputElement.files[0];let label=document.getElementById(statusTextId);
+    if(file)label.innerText="✅ Selected: "+file.name+" ("+(file.size/(1024*1024)).toFixed(2)+" MB)";
+    else label.innerText="ফটো বা ভিডিও সিলেক্ট করুন (গ্যালারি)";
+}
+
+// =================== POST UPLOAD ===================
+async function publishSmartUniversalPost(textId,fileInputId,boxId,progressId,fillId,statusTextId){
+    let text=document.getElementById(textId).value.trim();
+    let fileInput=document.getElementById(fileInputId);let selectedFile=fileInput.files[0];
+    let progressBar=document.getElementById(progressId);let progressFill=document.getElementById(fillId);
+    let statusLabel=document.getElementById(statusTextId);let homeBtn=document.getElementById('homeSubmitBtn');
+    if(!text&&!selectedFile){alert("পোস্ট করার জন্য কিছু লিখুন অথবা ফাইল সিলেক্ট করুন!");return;}
+    let finalMediaUrl=null;let isVideoPost=false;
+    if(selectedFile){
+        homeBtn.disabled=true;progressBar.style.display="block";statusLabel.innerText="আপলোড হচ্ছে...";
+        let cp=0;let pi=setInterval(()=>{cp=Math.min(cp+Math.random()*15,85);progressFill.style.width=cp+'%';},300);
+        try{
+            let url=await uploadFileToCatbox(selectedFile);
+            clearInterval(pi);progressFill.style.width='100%';
+            finalMediaUrl=url;
+            if(selectedFile.type.startsWith('video/')||url.match(/\.(mp4|webm|mov|m4v|3gp)/i))isVideoPost=true;
+        }catch(error){
+            clearInterval(pi);
+            alert("❌ আপলোড ব্যর্থ! ইন্টারনেট চেক করুন।");
+            resetUploadUI(progressBar,progressFill,statusLabel,fileInput,homeBtn);
+            return;
+        }
+    }
+    let postId="post_"+Date.now();
+    db.ref('global_posts/'+postId).set({id:postId,author:currentSavedName,avatar:currentSavedPfp,text:text||"",media:finalMediaUrl,isVideo:isVideoPost,senderId:globalCurrentUid,timestamp:Date.now()})
+    .then(()=>{document.getElementById(textId).value="";resetUploadUI(progressBar,progressFill,statusLabel,fileInput,homeBtn);togglePostBox(boxId);})
+    .catch(()=>{alert("পোস্ট সেভ করতে ব্যর্থ!");resetUploadUI(progressBar,progressFill,statusLabel,fileInput,homeBtn);});
+}
+function resetUploadUI(bar,fill,label,input,btn){
+    if(bar)bar.style.display="none";if(fill)fill.style.width="0%";
+    if(label)label.innerText="ফটো বা ভিডিও সিলেক্ট করুন (গ্যালারি)";
+    if(input)input.value="";if(btn)btn.disabled=false;
+}
+
+// =================== POSTS ===================
+function submitMultiReaction(event,postId,reactionType){
+    if(event)event.stopPropagation();
+    let reactRef=db.ref('global_posts/'+postId+'/reacts/'+globalCurrentUid);
+    reactRef.once('value').then(snapshot=>{if(snapshot.exists()&&snapshot.val()===reactionType)reactRef.remove();else reactRef.set(reactionType);closeAllOverlayPopups();});
+}
+function renderSinglePostHTMLCard(post,enableProfileClicks=true){
+    let totalReacts=post.reacts?Object.keys(post.reacts).length:0;
+    let userReactionKey=(post.reacts&&post.reacts[globalCurrentUid])?post.reacts[globalCurrentUid]:null;
+    let actionBtnText=userReactionKey?reactMap[userReactionKey]:'👍 Like';
+    let uniqueEmojis=[];
+    if(post.reacts)Object.values(post.reacts).forEach(type=>{let em=reactMap[type].split(' ')[0];if(!uniqueEmojis.includes(em))uniqueEmojis.push(em);});
+    let emojiSummaryStr=uniqueEmojis.slice(0,3).join('')+" "+totalReacts;
+    let totalComments=post.comments?Object.keys(post.comments).length:0;
+    let clickAction=enableProfileClicks?`onclick="openOthersProfile('${post.senderId}')"`:'' ;
+    let reactionPanelHTML=`<div class="reaction-flyout-box" id="react_panel_${post.id}"><span class="reaction-emoji-item" onclick="submitMultiReaction(event,'${post.id}','like')">👍</span><span class="reaction-emoji-item" onclick="submitMultiReaction(event,'${post.id}','love')">❤️</span><span class="reaction-emoji-item" onclick="submitMultiReaction(event,'${post.id}','care')">🥰</span><span class="reaction-emoji-item" onclick="submitMultiReaction(event,'${post.id}','haha')">😆</span><span class="reaction-emoji-item" onclick="submitMultiReaction(event,'${post.id}','wow')">😮</span></div>`;
+    let commentsRendered="";
+    if(post.comments)Object.values(post.comments).forEach(c=>{commentsRendered+=`<div class="single-comment-card"><div class="comment-avatar" style="background-image:url('${c.avatar||defaultProfileAvatar}');"></div><div class="comment-bubble"><b>${c.author}</b><br>${c.text}</div></div>`;});
+    if(post.isVideo){
+        return `<div class="watch-video-card"><div style="padding:12px;display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:10px;"><div class="post-p-p" style="background-image:url('${post.avatar||defaultProfileAvatar}');" ${clickAction}></div><h4 style="color:white;" ${clickAction}>${post.author}</h4></div><button class="post-report-btn" onclick="openReportModal('${post.id}')">⋯</button></div><div class="watch-video-wrapper"><video src="${post.media}" controls loop muted playsinline></video></div><div style="padding:12px;"><p style="color:#e4e6eb;font-size:14px;margin-bottom:10px;">${post.text}</p><div style="display:flex;justify-content:space-between;font-size:12px;color:#b0b3b8;"><div>${totalReacts>0?emojiSummaryStr:'👍 0'}</div><div>${totalComments} Comments</div></div></div><div class="post-action-row" style="background:#242526;">${reactionPanelHTML}<div class="action-tab-btn" onclick="submitMultiReaction(null,'${post.id}','like')" oncontextmenu="showReactionPanel(event,'react_panel_${post.id}');return false;">${actionBtnText}</div><div class="action-tab-btn" onclick="document.getElementById('input_${post.id}').focus()">💬 Comment</div></div><div class="comment-section-wrapper" style="background:#242526;border-top:1px solid #3a3b3c;"><div class="comment-display-list">${commentsRendered}</div><div class="comment-input-row"><input type="text" class="comment-input-field" id="input_${post.id}" placeholder="Write a comment..." style="background:#3a3b3c;border:none;color:white;"><button class="comment-send-btn" onclick="submitComment('${post.id}')">Send</button></div></div>${getBannerAdHTML()}</div>`;
+    } else {
+        let mediaTag=post.media?`<div class="post-media-display"><img src="${post.media}"></div>`:"";
+        return `<div class="fb-post"><div class="post-top-bar"><div class="post-profile-area" ${clickAction}><div class="post-p-p" style="background-image:url('${post.avatar||defaultProfileAvatar}');"></div><div class="post-meta"><h4>${post.author}</h4><span>Just now · 🌍</span></div></div><button class="post-report-btn" onclick="openReportModal('${post.id}')">⋯</button></div>${post.text?`<div class="post-text-content">${post.text}</div>`:""}${mediaTag}<div class="post-status-counts"><div>${totalReacts>0?emojiSummaryStr:'👍 0'}</div><div>${totalComments} Comments</div></div><div class="post-action-row">${reactionPanelHTML}<div class="action-tab-btn" onclick="submitMultiReaction(null,'${post.id}','like')" oncontextmenu="showReactionPanel(event,'react_panel_${post.id}');return false;">${actionBtnText}</div><div class="action-tab-btn" onclick="document.getElementById('input_${post.id}').focus()">💬 Comment</div></div><div class="comment-section-wrapper"><div class="comment-display-list">${commentsRendered}</div><div class="comment-input-row"><input type="text" class="comment-input-field" id="input_${post.id}" placeholder="Write a comment..."><button class="comment-send-btn" onclick="submitComment('${post.id}')">Send</button></div></div>${getBannerAdHTML()}</div>`;
+    }
+}
+function syncDataEngine(){
+    db.ref('global_posts').on('value',snapshot=>{
+        let data=snapshot.val()||{};let posts=Object.values(data).reverse();
+        let homeWrapper=document.getElementById('newsFeedWrapper');let videoWrapper=document.getElementById('videoWatchFeedWrapper');let profileWrapper=document.getElementById('myPersonalWallFeed');
+        homeWrapper.innerHTML="";videoWrapper.innerHTML="";profileWrapper.innerHTML="";
+        posts.forEach(post=>{homeWrapper.innerHTML+=renderSinglePostHTMLCard(post,true);if(post.isVideo)videoWrapper.innerHTML+=renderSinglePostHTMLCard(post,true);if(post.senderId===globalCurrentUid)profileWrapper.innerHTML+=renderSinglePostHTMLCard(post,false);});
+    });
+}
+function submitComment(postId){let inp=document.getElementById(`input_${postId}`);let text=inp.value.trim();if(!text)return;db.ref('global_posts/'+postId+'/comments/'+"comment_"+Date.now()).set({author:currentSavedName,avatar:currentSavedPfp,text});inp.value="";}
+
+// =================== MESSENGER ===================
+let currentChatUid='';
+let currentChatListener=null;
+let isRecording=false;
+let mediaRecorder=null;
+let audioChunks=[];
+let allUsersCache={};
+
+function openMessengerInbox(){document.getElementById('messengerInboxModal').classList.add('open');}
+function closeMessengerInbox(){document.getElementById('messengerInboxModal').classList.remove('open');}
+function loadInboxList(){
+    db.ref('users_metadata').on('value',snap=>{
+        allUsersCache=snap.val()||{};
+        renderInboxList('');
+    });
+}
+function renderInboxList(filter){
+    let wrap=document.getElementById('inboxListWrapper');wrap.innerHTML='';
+    if(!filter||'lunex ai'.includes(filter.toLowerCase())){
+        wrap.innerHTML=`<div class="inbox-item" onclick="openLunexAI()" style="background:linear-gradient(135deg,rgba(138,43,226,0.08),rgba(0,132,255,0.08));border-bottom:1px solid rgba(138,43,226,0.15);"><div class="inbox-avatar" style="background:linear-gradient(135deg,#8A2BE2,#0084FF);display:flex;align-items:center;justify-content:center;font-size:22px;border:2px solid rgba(138,43,226,0.4);">🤖</div><div class="inbox-info"><div class="inbox-name" style="background:linear-gradient(90deg,#8A2BE2,#0084FF);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700;">✨ Lunex AI</div><div class="inbox-preview">যেকোনো প্রশ্ন করুন 😄</div></div><div style="font-size:18px;">✨</div></div>`;
+    }
+    Object.values(allUsersCache).forEach(user=>{
+        if(user.uid===globalCurrentUid)return;
+        if(filter&&!user.name.toLowerCase().includes(filter.toLowerCase()))return;
+        wrap.innerHTML+=`<div class="inbox-item" onclick="openMessengerWith('${user.uid}')"><div class="inbox-avatar" style="background-image:url('${user.pfp||defaultProfileAvatar}');"><div class="inbox-online-dot"></div></div><div class="inbox-info"><div class="inbox-name">${user.name}</div><div class="inbox-preview" id="preview_${user.uid}">Tap to chat</div></div></div>`;
+        let chatId=getChatId(globalCurrentUid,user.uid);
+        db.ref('chats/'+chatId).limitToLast(1).on('value',msgSnap=>{
+            let msgs=msgSnap.val();let preview=document.getElementById('preview_'+user.uid);
+            if(preview&&msgs){let last=Object.values(msgs)[0];let txt=last.type==='text'?last.text:last.type==='voice'?'🎤 Voice message':'📷 Media';preview.innerText=(last.senderId===globalCurrentUid?'You: ':'')+txt;}
+        });
+    });
+}
+function filterInboxList(){let q=document.getElementById('inboxSearchInput').value;renderInboxList(q);}
+function getChatId(uid1,uid2){return[uid1,uid2].sort().join('_');}
+
+function openMessengerWith(targetUid){
+    if(!targetUid)return;
+    currentChatUid=targetUid;
+    closeMessengerInbox();closeOthersProfileModal();
+    let user=allUsersCache[targetUid]||{};
+    document.getElementById('msngHeaderName').innerText=user.name||'User';
+    document.getElementById('msngHeaderAvatar').style.backgroundImage=`url('${user.pfp||defaultProfileAvatar}')`;
+    document.getElementById('msngIntroAvatar').style.backgroundImage=`url('${user.pfp||defaultProfileAvatar}')`;
+    document.getElementById('msngIntroName').innerText=user.name||'User';
+    document.getElementById('msngIntroSub').innerText=user.bio||'ChatBook member';
+    document.getElementById('messengerModal').classList.add('open');
+    document.getElementById('msngTextInput').value='';
+    document.getElementById('msngSendBtn').style.display='none';
+    document.getElementById('msngThumbBtn').style.display='block';
+    if(currentChatListener)currentChatListener();
+    let chatId=getChatId(globalCurrentUid,targetUid);
+    let msgList=document.getElementById('msngMessagesList');msgList.innerHTML='';
+    currentChatListener=db.ref('chats/'+chatId).on('value',snapshot=>{
+        let data=snapshot.val()||{};msgList.innerHTML='';
+        let showIntro=Object.keys(data).length<3;
+        document.getElementById('msngProfileIntro').style.display=showIntro?'flex':'none';
+        Object.values(data).forEach(msg=>{
+            let isMe=msg.senderId===globalCurrentUid;
+            let avatar=isMe?currentSavedPfp:(user.pfp||defaultProfileAvatar);
+            if(msg.type==='text'){
+                msgList.innerHTML+=`<div class="msg-row ${isMe?'me':''}">
+                    ${!isMe?`<div class="msg-avatar-sm" style="background-image:url('${avatar}');"></div>`:''}
+                    <div class="msg-bubble ${isMe?'me':'them'}">${escapeHtml(msg.text)}</div>
+                </div>`;
+            }else if(msg.type==='image'||msg.type==='video'){
+                let mediaEl=msg.type==='image'?`<img src="${msg.url}">`:`<video src="${msg.url}" controls playsinline style="max-width:220px;border-radius:12px;"></video>`;
+                msgList.innerHTML+=`<div class="msg-row ${isMe?'me':''}">
+                    ${!isMe?`<div class="msg-avatar-sm" style="background-image:url('${avatar}');"></div>`:''}
+                    <div class="msg-media-bubble">${mediaEl}</div>
+                </div>`;
+            }else if(msg.type==='voice'){
+                let bars=generateWaveformBars(20);
+                msgList.innerHTML+=`<div class="msg-row ${isMe?'me':''}">
+                    ${!isMe?`<div class="msg-avatar-sm" style="background-image:url('${avatar}');"></div>`:''}
+                    <div class="msg-voice-bubble ${isMe?'me':''}">
+                        <button class="voice-play-btn" onclick="playVoiceMsg(this,'${msg.url}')">▶</button>
+                        <div class="voice-waveform">${bars}</div>
+                        <span class="voice-duration">${msg.duration||'0:02'}</span>
+                    </div>
+                </div>`;
+            }
+        });
+        setTimeout(()=>{msgList.scrollTop=msgList.scrollHeight;},50);
+    });
+}
+function generateWaveformBars(count){let html='';for(let i=0;i<count;i++){let h=6+Math.floor(Math.random()*16);html+=`<div class="voice-bar" style="height:${h}px;"></div>`;}return html;}
+function playVoiceMsg(btn,url){let audio=new Audio(url);btn.innerText='⏸';audio.play();audio.onended=()=>btn.innerText='▶';audio.onerror=()=>btn.innerText='▶';}
+function closeMessengerChat(){
+    document.getElementById('messengerModal').classList.remove('open');
+    if(currentChatListener){db.ref('chats/'+getChatId(globalCurrentUid,currentChatUid)).off('value',currentChatListener);currentChatListener=null;}
+    currentChatUid='';
+}
+function sendMsngMessage(){
+    let inp=document.getElementById('msngTextInput');let text=inp.value.trim();
+    if(!text||!currentChatUid)return;
+    let chatId=getChatId(globalCurrentUid,currentChatUid);
+    db.ref('chats/'+chatId).push({senderId:globalCurrentUid,type:'text',text,timestamp:Date.now()});
+    inp.value='';autoResizeMsngInput(inp);
+    document.getElementById('msngSendBtn').style.display='none';
+    document.getElementById('msngThumbBtn').style.display='block';
+}
+function sendThumbsUp(){if(!currentChatUid)return;let chatId=getChatId(globalCurrentUid,currentChatUid);db.ref('chats/'+chatId).push({senderId:globalCurrentUid,type:'text',text:'👍',timestamp:Date.now()});}
+function msngKeyDown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsngMessage();}}
+function autoResizeMsngInput(el){
+    el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';
+    let hasText=el.value.trim().length>0;
+    document.getElementById('msngSendBtn').style.display=hasText?'flex':'none';
+    document.getElementById('msngThumbBtn').style.display=hasText?'none':'block';
+}
+
+async function handleMsngFileUpload(input){
+    let file=input.files[0];if(!file||!currentChatUid)return;
+    let uploadBar=document.getElementById('msngUploadBar');
+    let uploadFill=document.getElementById('msngUploadFill');
+    let uploadStatus=document.getElementById('msngUploadStatus');
+    uploadBar.style.display='block';uploadFill.style.width='0%';
+    uploadStatus.innerText='আপলোড হচ্ছে...';
+    let cp=0;let pi=setInterval(()=>{cp=Math.min(cp+Math.random()*15,85);uploadFill.style.width=cp+'%';},300);
+    try{
+        let url=await uploadFileToCatbox(file);
+        clearInterval(pi);uploadFill.style.width='100%';uploadStatus.innerText='✅ সেন্ড হচ্ছে...';
+        let type=file.type.startsWith('video/')?'video':'image';
+        let chatId=getChatId(globalCurrentUid,currentChatUid);
+        await db.ref('chats/'+chatId).push({senderId:globalCurrentUid,type,url,timestamp:Date.now()});
+        setTimeout(()=>{uploadBar.style.display='none';uploadFill.style.width='0%';},1000);
+    }catch(e){
+        clearInterval(pi);uploadStatus.innerText='❌ আপলোড ব্যর্থ!';
+        setTimeout(()=>{uploadBar.style.display='none';},2000);
+        alert('❌ আপলোড ব্যর্থ!');
+    }
+    input.value='';
+}
+
+function toggleVoiceRecording(){if(!isRecording)startRecording();else stopRecording();}
+function startRecording(){
+    navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+        isRecording=true;audioChunks=[];
+        mediaRecorder=new MediaRecorder(stream);
+        mediaRecorder.ondataavailable=e=>{if(e.data.size>0)audioChunks.push(e.data);};
+        mediaRecorder.onstop=uploadVoiceMessage;
+        mediaRecorder.start();
+        document.getElementById('msngMicBtn').classList.add('recording');
+    }).catch(()=>alert('মাইক্রোফোন অ্যাক্সেস দিন'));
+}
+function stopRecording(){
+    isRecording=false;if(mediaRecorder)mediaRecorder.stop();
+    document.getElementById('msngMicBtn').classList.remove('recording');
+}
+async function uploadVoiceMessage(){
+    let blob=new Blob(audioChunks,{type:'audio/webm'});
+    let file=new File([blob],'voice_'+Date.now()+'.webm',{type:'audio/webm'});
+    try{
+        let url=await uploadFileToCatbox(file);
+        let chatId=getChatId(globalCurrentUid,currentChatUid);
+        let durSec=Math.round(blob.size/8000);
+        let durStr='0:'+(durSec<10?'0':'')+durSec;
+        db.ref('chats/'+chatId).push({senderId:globalCurrentUid,type:'voice',url,duration:durStr,timestamp:Date.now()});
+    }catch(e){alert('❌ ভয়েস আপলোড ব্যর্থ!');}
+}
+
+// =================== LUNEX AI ===================
+const GROQ_API_KEY = "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";
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+let lunexHistory = [];
+let lunexIsTyping = false;
+
+const LUNEX_SYSTEM_PROMPT = `তুমি Lunex AI — ChatBook এর মজাদার, স্মার্ট এবং একটু পাগলাটে AI সহকারী।
+তোমার personality:
+- তুমি অনেক ফানি এবং হাসিখুশি 😄
+- তুমি বাংলা slang ব্যবহার করো (ভাই, ইয়ার, আরে ইত্যাদি)
+- তুমি রোস্ট করতে পারো কিন্তু friendly ভাবে 😂
+- তুমি emoji অনেক ব্যবহার করো
+- ইউজার যে ভাষায় কথা বলবে সেই ভাষায় কথা বলবে
+- ছোট ছোট উত্তর দাও, বেশি লম্বা না`;
+
+function openLunexAI(){
+    closeMessengerInbox();
+    document.getElementById('lunexAIModal').classList.add('open');
+    if(lunexHistory.length===0){
+        setTimeout(()=>{
+            addLunexMessage('ai','আরে ভাই! 👋 আমি Lunex AI! ChatBook এর সবচেয়ে মজাদার AI 🤖✨\n\nআমাকে যেকোনো কিছু জিজ্ঞেস করো! 😄🔥');
+        },300);
+    }
+}
+function closeLunexAI(){ document.getElementById('lunexAIModal').classList.remove('open'); }
+
+function addLunexMessage(role,text){
+    let msgList=document.getElementById('lunexMessages');
+    let isMe=role==='user';
+    msgList.innerHTML+=`<div class="lunex-msg-row ${isMe?'me':''}">
+        ${!isMe?`<div class="lunex-ai-av">🤖</div>`:''}
+        <div class="lunex-bubble ${isMe?'me':'ai'}">${escapeHtml(text).replace(/\n/g,'<br>')}</div>
+    </div>`;
+    if(lunexHistory.length>0)document.getElementById('lunexIntro').style.display='none';
+    setTimeout(()=>{msgList.scrollTop=msgList.scrollHeight;},50);
+}
+function showLunexTyping(){
+    let msgList=document.getElementById('lunexMessages');
+    msgList.innerHTML+=`<div class="lunex-msg-row" id="lunexTypingRow"><div class="lunex-ai-av">🤖</div><div class="lunex-typing"><span></span><span></span><span></span></div></div>`;
+    setTimeout(()=>{msgList.scrollTop=msgList.scrollHeight;},50);
+}
+function hideLunexTyping(){let el=document.getElementById('lunexTypingRow');if(el)el.remove();}
+
+async function sendLunexMessage(){
+    let inp=document.getElementById('lunexInput');
+    let text=inp.value.trim();
+    if(!text||lunexIsTyping)return;
+    inp.value='';autoResizeLunex(inp);
+    document.getElementById('lunexIntro').style.display='none';
+    lunexHistory.push({role:'user',content:text});
+    addLunexMessage('user',text);
+    lunexIsTyping=true;
+    showLunexTyping();
+    try{
+        let resp=await fetch(GROQ_API_URL,{
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':'Bearer '+GROQ_API_KEY},
+            body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:300,messages:[{role:'system',content:LUNEX_SYSTEM_PROMPT},...lunexHistory]})
+        });
+        let data=await resp.json();
+        hideLunexTyping();
+        let reply=data.choices?.[0]?.message?.content||'আরে ভাই কী হইলো! আবার চেষ্টা করো 😅';
+        lunexHistory.push({role:'assistant',content:reply});
+        if(lunexHistory.length>20)lunexHistory=lunexHistory.slice(-16);
+        addLunexMessage('ai',reply);
+    }catch(e){
+        hideLunexTyping();
+        addLunexMessage('ai','আরে ভাই নেটওয়ার্ক গেছে মনে হয় 😭 আবার চেষ্টা করো!');
+    }
+    lunexIsTyping=false;
+}
+function sendLunexChip(text){document.getElementById('lunexInput').value=text;sendLunexMessage();}
+function lunexKeyDown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendLunexMessage();}}
+function autoResizeLunex(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px';}
+
+function escapeHtml(text){let div=document.createElement('div');div.appendChild(document.createTextNode(text));return div.innerHTML;}
+function formatTime(ts){if(!ts)return'এখন';let d=new Date(ts);return d.toLocaleDateString('bn-BD')+' '+d.toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'});}
+function togglePostBox(boxId){let b=document.getElementById(boxId);b.style.display=b.style.display==='block'?'none':'block';}
+function showReactionPanel(event,panelId){event.stopPropagation();closeAllOverlayPopups();let p=document.getElementById(panelId);if(p)p.style.display='flex';}
+function closeAllOverlayPopups(){
+    document.querySelectorAll('.reaction-flyout-box').forEach(r=>r.style.display='none');
+    document.getElementById('notifPanel').style.display='none';
+}
+function switchMainTab(pageId,tabElement){
+    document.querySelectorAll('.view-page').forEach(p=>p.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    document.querySelectorAll('.bottom-tab').forEach(t=>t.classList.remove('active'));
+    if(tabElement)tabElement.classList.add('active');
+}
+function navigateToProfileTab(){switchMainTab('profile-view',document.getElementById('tab-profile'));}
+</script>
+</body>
+</html>
